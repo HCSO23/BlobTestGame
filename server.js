@@ -11,7 +11,7 @@ const PELLET_TARGET = 500;
 const TICK_HZ = 30;
 const SEND_EVERY = 2; // snapshots at 15 Hz
 const MAX_PLAYERS = 100;
-const START_MASS = 20000;
+const START_MASS = 20;
 const RESPAWN_MS = 2000;
 
 // ---------- static files ----------
