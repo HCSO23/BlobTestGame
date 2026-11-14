@@ -1,0 +1,16 @@
+{
+  "name": "blob-arena",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A tiny multiplayer .io blob game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.23.0"
+  }
+}
