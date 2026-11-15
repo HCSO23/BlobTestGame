@@ -8,10 +8,10 @@ const { WebSocketServer } = require("ws");
 const PORT = Number(process.env.PORT) || 3000;
 const WORLD = 3000;
 const PELLET_TARGET = 500;
-const TICK_HZ = 30;
+const TICK_HZ = 3;
 const SEND_EVERY = 2; // snapshots at 15 Hz
 const MAX_PLAYERS = 100;
-const START_MASS = 100000;
+const START_MASS = 20;
 const RESPAWN_MS = 2000;
 
 // ---------- static files ----------
