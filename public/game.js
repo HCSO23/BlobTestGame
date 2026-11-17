@@ -4,7 +4,7 @@
   const DEBUG = params.get("debug") === "1";
   const CFG = {
     world: DEBUG ? 3000 : 102500,
-    blobCount: DEBUG ? 20 : 250000,
+    blobCount: DEBUG ? 20 : 1000000,
     clusters: DEBUG ? 0 : 600, // dense patches; the rest of the blobs are scattered evenly
     clusterShare: 0.6,
     startMass: 20,
