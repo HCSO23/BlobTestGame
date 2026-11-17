@@ -8,7 +8,7 @@
     startMass: 20,
     parMs: DEBUG ? 30000 : 15 * 60 * 1000, // beat par (15 min) for bonus Essence
     seed: 1337, // same map every run, so routes can be learned
-    baseSpeed: 100,
+    baseSpeed: 90,
     accel: 9, // how quickly velocity catches up to input (higher = less drift)
     minSplitMass: 12,
     splitCount: 6, // speedrun splits per run
@@ -16,7 +16,7 @@
     comboCap: 40,
   };
   const SAVE_KEY = DEBUG ? "blobDevourSave_debug" : "blobDevourSave";
-  const COST_MULT = 1.9;
+  // upgrade cost = base + step * currentLevel (steady, linear progression)
   const PERK_MULT = 1.6;
   const BUY_KEYS = ["z", "x", "c"];
 
@@ -24,31 +24,30 @@
   const ABILITIES = [
     { id: "speed", icon: "»", name: "Speed", kind: "Passive", desc: "Higher top speed.", unlock: 0,
       subs: [
-        { id: "lvl", name: "Top speed", max: 8, base: 20, info: (l) => `+${l * 10}% speed` },
-        { id: "grip", name: "Grip", max: 3, base: 100, info: (l) => `${l ? "+" + l * 30 + "%" : "base"} turning` },
+        { id: "lvl", name: "Top speed", max: 8, base: 10, step: 15, info: (l) => `+${l * 10}% speed` },
       ] },
-    { id: "magnet", icon: "◎", name: "Magnet", kind: "Passive", desc: "Pull nearby blobs toward you.", unlock: 300,
+    { id: "magnet", icon: "◎", name: "Magnet", kind: "Passive", desc: "Pull nearby blobs toward you.", unlock: 150,
       subs: [
-        { id: "range", name: "Range", max: 6, base: 100, info: (l) => `${40 + 30 * l}px reach` },
-        { id: "pull", name: "Pull strength", max: 3, base: 150, info: (l) => `${90 + 60 * l}px/s pull` },
+        { id: "range", name: "Range", max: 6, base: 60, step: 40, info: (l) => `${40 + 30 * l}px reach` },
+        { id: "pull", name: "Pull strength", max: 3, base: 80, step: 60, info: (l) => `${90 + 60 * l}px/s pull` },
       ] },
     { id: "gobble", icon: "✦", name: "Gobble", kind: "Passive", desc: "More from every blob, longer combos.", unlock: 0,
       subs: [
-        { id: "goo", name: "Goo per blob", max: 6, base: 40, info: (l) => `+${l * 20}% Goo` },
-        { id: "combo", name: "Combo window", max: 3, base: 120, info: (l) => `${(CFG.comboBase + 0.3 * l).toFixed(1)}s to keep combo` },
-        { id: "mass", name: "Mass per blob", max: 3, base: 80, info: (l) => `+${l * 20}% mass` },
+        { id: "goo", name: "Goo per blob", max: 6, base: 15, step: 20, info: (l) => `+${l * 20}% Goo` },
+        { id: "combo", name: "Combo window", max: 3, base: 100, step: 80, info: (l) => `${(CFG.comboBase + 0.3 * l).toFixed(1)}s to keep combo` },
+        { id: "mass", name: "Mass per blob", max: 3, base: 60, step: 50, info: (l) => `+${l * 20}% mass` },
       ] },
-    { id: "dash", icon: "➤", name: "Dash", kind: "Active · Space", desc: "Burst in your aim direction. Wider pickup while dashing; a gold blob mid-dash refunds the charge.", unlock: 400,
+    { id: "dash", icon: "➤", name: "Dash", kind: "Active · Space", desc: "Burst in your aim direction. Wider pickup while dashing; a gold blob mid-dash refunds the charge.", unlock: 350,
       subs: [
-        { id: "cooldown", name: "Cooldown", max: 5, base: 150, info: (l) => `${(4 * 0.78 ** l).toFixed(2)}s recharge` },
-        { id: "distance", name: "Distance", max: 5, base: 150, info: (l) => `${Math.round(300 * (1 + 0.3 * l))}px dash` },
-        { id: "charges", name: "Charges", max: 2, base: 700, info: (l) => `${1 + l} charge${l ? "s" : ""}` },
+        { id: "cooldown", name: "Cooldown", max: 5, base: 120, step: 80, info: (l) => `${(4 * 0.78 ** l).toFixed(2)}s recharge` },
+        { id: "distance", name: "Distance", max: 5, base: 120, step: 80, info: (l) => `${Math.round(300 * (1 + 0.3 * l))}px dash` },
+        { id: "charges", name: "Charges", max: 2, base: 500, step: 400, info: (l) => `${1 + l} charge${l ? "s" : ""}` },
       ] },
-    { id: "split", icon: "✂", name: "Split", kind: "Active · E / Q", desc: "Split into pieces that eat on their own. Q regroups early.", unlock: 1000,
+    { id: "split", icon: "✂", name: "Split", kind: "Active · E / Q", desc: "Split into pieces that eat on their own. Q regroups early.", unlock: 900,
       subs: [
-        { id: "pieces", name: "Pieces", max: 3, base: 1200, info: (l) => `up to ${2 ** (1 + l)} pieces` },
-        { id: "launch", name: "Launch distance", max: 3, base: 200, info: (l) => `${Math.round(200 * (1 + 0.4 * l))}px launch` },
-        { id: "merge", name: "Merge time", max: 3, base: 200, info: (l) => `${(7 * (1 + 0.35 * l)).toFixed(1)}s apart` },
+        { id: "pieces", name: "Pieces", max: 3, base: 900, step: 700, info: (l) => `up to ${2 ** (1 + l)} pieces` },
+        { id: "launch", name: "Launch distance", max: 3, base: 200, step: 120, info: (l) => `${Math.round(200 * (1 + 0.4 * l))}px launch` },
+        { id: "merge", name: "Merge time", max: 3, base: 200, step: 120, info: (l) => `${(7 * (1 + 0.35 * l)).toFixed(1)}s apart` },
       ] },
   ];
 
@@ -66,7 +65,7 @@
   const $ = (id) => document.getElementById(id);
   const radius = (m) => 4 * Math.sqrt(m);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const subCost = (sub, lvl) => Math.round(sub.base * COST_MULT ** lvl);
+  const subCost = (sub, lvl) => sub.base + sub.step * lvl;
   const perkCost = (perk, lvl) => Math.round(perk.base * PERK_MULT ** lvl);
   function fmtTime(ms) {
     if (ms == null) return "—";
@@ -89,7 +88,7 @@
 
   // ================= save =================
   function defaultSave() {
-    return { name: "", essence: 0, prestige: 0, perks: {}, bestNormal: null, bestFresh: null, splitsNormal: null, splitsFresh: null };
+    return { name: "", essence: 0, prestige: 0, perks: {}, bestNormal: null, bestFresh: null, splitsNormal: null, splitsFresh: null, muted: false };
   }
   function loadSave() {
     try {
@@ -103,6 +102,68 @@
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {}
   }
   const perkLvl = (id) => save.perks[id] || 0;
+
+  // ================= sound (tiny WebAudio synth, no files) =================
+  const sfx = (() => {
+    let ac = null;
+    let lastEat = 0;
+    function ctx() {
+      if (!ac) {
+        try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
+      }
+      if (ac.state === "suspended") ac.resume();
+      return ac;
+    }
+    function tone(freq, { type = "sine", dur = 0.09, vol = 0.12, slide = 1, delay = 0 } = {}) {
+      if (save.muted || !ac) return;
+      const t = ac.currentTime + delay;
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t);
+      o.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(ac.destination);
+      o.start(t);
+      o.stop(t + dur + 0.02);
+    }
+    return {
+      unlock: ctx,
+      eat(combo, gold) {
+        const now = performance.now();
+        if (!gold && now - lastEat < 28) return; // avoid a wall of noise when magnet pulls many at once
+        lastEat = now;
+        // pitch climbs with the combo (one octave over 24 bites) so streaks sound like streaks
+        const f = 330 * 2 ** (Math.min(combo, 24) / 24);
+        if (gold) {
+          tone(f * 1.5, { type: "triangle", dur: 0.16, vol: 0.13, slide: 1.02 });
+          tone(f * 2.25, { type: "sine", dur: 0.22, vol: 0.07, delay: 0.05 });
+        } else {
+          tone(f, { type: "sine", dur: 0.07, vol: 0.09, slide: 1.35 });
+        }
+      },
+      dash() { tone(220, { type: "sawtooth", dur: 0.18, vol: 0.05, slide: 2.2 }); },
+      split() { tone(500, { type: "square", dur: 0.08, vol: 0.04, slide: 0.6 }); tone(700, { type: "square", dur: 0.08, vol: 0.03, slide: 0.6, delay: 0.04 }); },
+      refund() { tone(880, { type: "triangle", dur: 0.12, vol: 0.08, delay: 0.06 }); },
+      buy() { tone(523, { type: "triangle", dur: 0.08, vol: 0.08 }); tone(784, { type: "triangle", dur: 0.12, vol: 0.08, delay: 0.07 }); },
+      finish() { [523, 659, 784, 1047].forEach((f, i) => tone(f, { type: "triangle", dur: 0.25, vol: 0.1, delay: i * 0.11 })); },
+    };
+  })();
+  window.addEventListener("pointerdown", () => sfx.unlock(), { once: false });
+  window.addEventListener("keydown", () => sfx.unlock());
+
+  // ================= particles =================
+  function burst(x, y, color, n, speed) {
+    if (!run) return;
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const v = speed * (0.5 + Math.random() * 0.7);
+      run.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: 0.35 + Math.random() * 0.25, color, size: 1.5 + Math.random() * 2.2 });
+    }
+    if (run.parts.length > 500) run.parts.splice(0, run.parts.length - 500);
+  }
 
   // ================= canvas =================
   const canvas = $("c");
@@ -170,6 +231,8 @@
       splits: [],
       deltaShowUntil: 0,
       pops: [],
+      parts: [],
+      floats: [],
       submitted: false,
     };
     cam.x = c; cam.y = c;
@@ -180,7 +243,7 @@
     const u = run.up, p = run.perm;
     return {
       speedMult: (1 + 0.1 * u.speed.lvl) * (1 + 0.05 * p.startSpeed),
-      accel: CFG.accel * (1 + 0.3 * u.speed.grip),
+      accel: CFG.accel,
       magnetRange: u.magnet.owned ? 40 + 30 * u.magnet.range : 0,
       magnetPull: 90 + 60 * u.magnet.pull,
       gooMult: (1 + 0.2 * u.gobble.goo) * (1 + 0.2 * p.gooMult),
@@ -236,6 +299,7 @@
     else if (k === "e") doSplit();
     else if (k === "q") doRegroup();
     else if (k === "u") toggleShop();
+    else if (k === "m") toggleMute();
     else if (k >= "1" && k <= "5") selectAbility(Number(k) - 1);
     else if (BUY_KEYS.includes(k)) buyRow(BUY_KEYS.indexOf(k));
     else if (k === "r" && run && run.state !== "menu") startRun(run.fresh);
@@ -247,6 +311,13 @@
   $("regroupBtn").addEventListener("click", doRegroup);
   $("shopToggle").addEventListener("click", toggleShop);
   function toggleShop() { $("shop").classList.toggle("open"); }
+  function toggleMute() {
+    save.muted = !save.muted;
+    persist();
+    $("muteBtn").textContent = save.muted ? "Sound off" : "Sound on";
+  }
+  $("muteBtn").addEventListener("click", toggleMute);
+  $("muteBtn").textContent = save.muted ? "Sound off" : "Sound on";
 
   // ================= abilities =================
   function isPlaying() { return run && (run.state === "ready" || run.state === "running"); }
@@ -275,6 +346,8 @@
       c.iy += a.y * v;
     }
     run.dashUntil = performance.now() + 320;
+    sfx.dash();
+    for (const c of run.cells) burst(c.x, c.y, COLORS.accent, 6, 120);
     beginTimer();
   }
 
@@ -293,6 +366,7 @@
     }
     if (run.cells.length > before) {
       run.mergeAt = performance.now() + st.mergeMs;
+      sfx.split();
       beginTimer();
     }
   }
@@ -435,6 +509,7 @@
       st[s.id]++;
       if (a.id === "dash" && s.id === "charges") run.dash.n = Math.min(run.dash.n + 1, stats().dashCharges);
     }
+    sfx.buy();
     updateShop();
     const again = rowRefs[i];
     if (again) { again.el.classList.remove("flash"); void again.el.offsetWidth; again.el.classList.add("flash"); }
@@ -508,6 +583,8 @@
     $("modeTag").className = fresh ? "fresh" : "";
     $("splitDelta").textContent = "";
     buildShop();
+    cam.zoom = 4; // start right up close, then pull out
+    sfx.unlock();
     pointer.active = false;
     keys.clear();
     document.activeElement && document.activeElement.blur && document.activeElement.blur();
@@ -516,6 +593,7 @@
   function finishRun() {
     run.state = "done";
     run.endT = performance.now();
+    sfx.finish();
     const t = run.endT - run.startT;
     const key = run.fresh ? "bestFresh" : "bestNormal";
     const splitKey = run.fresh ? "splitsFresh" : "splitsNormal";
@@ -614,12 +692,18 @@
     run.lastEat = now;
     run.maxCombo = Math.max(run.maxCombo, run.combo);
     c.m += b.m * st.massMult;
-    run.goo += b.g * st.gooMult * comboMult(run.combo);
+    const gain = b.g * st.gooMult * comboMult(run.combo);
+    run.goo += gain;
     run.pops.push({ x: b.x, y: b.y, r: b.r, t: 0, gold: b.gold });
+    c.pulse = Math.min(1, (c.pulse || 0) + (b.gold ? 0.9 : 0.45));
+    burst(b.x, b.y, b.gold ? COLORS.gold : `hsl(${b.hue} 80% 65%)`, b.gold ? 12 : 5, b.gold ? 160 : 90);
+    if (b.gold || run.combo % 10 === 0) run.floats.push({ x: b.x, y: b.y - b.r, t: 0, text: b.gold ? `+${Math.round(gain)}` : `${run.combo}×`, gold: b.gold });
+    sfx.eat(run.combo, b.gold);
     // dash tech: gold blob eaten mid-dash refunds the charge
     if (b.gold && now < run.dashUntil && run.dash.n < st.dashCharges) {
       run.dash.n++;
       run.pops.push({ x: c.x, y: c.y, r: radius(c.m), t: 0, gold: true });
+      sfx.refund();
     }
     // speedrun splits
     if (run.eaten % splitEvery() === 0 && run.splits.length < CFG.splitCount) {
@@ -789,13 +873,14 @@
     let spread = 0;
     for (const c of cells) spread = Math.max(spread, Math.hypot(c.x - cx, c.y - cy) + radius(c.m));
     const screen = Math.min(1, Math.max(W, H) / 1100 + 0.25);
-    const base = clamp(Math.pow(18 / radius(tm), 0.4), 0.3, 1.1) * screen;
+    // close-up while small, pulling out quickly as you grow
+    const base = clamp(1.7 * Math.pow(18 / radius(tm), 0.55), 0.3, 1.7) * screen;
     const fit = (Math.min(W, H) * 0.42) / Math.max(spread, 1);
     const target = run.state === "menu" ? 0.6 * screen : Math.min(base, fit);
     const k = Math.min(1, dt * 8);
     cam.x += (cx - cam.x) * k;
     cam.y += (cy - cam.y) * k;
-    cam.zoom += (target - cam.zoom) * Math.min(1, dt * 3);
+    cam.zoom += (target - cam.zoom) * Math.min(1, dt * 2.5);
   }
 
   function draw(now, dt) {
@@ -845,6 +930,22 @@
     }
     run.pops = run.pops.filter((p) => p.t < 0.35);
 
+    // particles
+    for (const p of run.parts) {
+      p.t += dt;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vx *= Math.exp(-5 * dt); p.vy *= Math.exp(-5 * dt);
+      const a = 1 - p.t / p.life;
+      if (a <= 0) continue;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * (0.6 + 0.4 * a), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    run.parts = run.parts.filter((p) => p.t < p.life);
+
     const st = stats();
     if (st.magnetRange && run.state !== "menu") {
       ctx.strokeStyle = "rgba(88,196,168,0.18)";
@@ -868,13 +969,20 @@
           ctx.arc(c.x, c.y, r * 1.5, 0, Math.PI * 2);
           ctx.fill();
         }
+        // gulp: swell briefly after each bite
+        c.pulse = (c.pulse || 0) * Math.exp(-9 * dt);
+        const rr = r * (1 + 0.14 * c.pulse);
         ctx.fillStyle = COLORS.accent;
         ctx.strokeStyle = "rgba(0,0,0,0.25)";
-        ctx.lineWidth = Math.max(3, r * 0.08);
+        ctx.lineWidth = Math.max(3, rr * 0.08);
         ctx.beginPath();
-        ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+        ctx.arc(c.x, c.y, rr, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
+        ctx.fillStyle = `rgba(255,255,255,${0.16 + 0.25 * c.pulse})`;
+        ctx.beginPath();
+        ctx.arc(c.x - rr * 0.3, c.y - rr * 0.32, rr * 0.38, 0, Math.PI * 2);
+        ctx.fill();
       }
       // aim indicator
       if (isPlaying()) {
@@ -889,6 +997,21 @@
         ctx.stroke();
       }
     }
+
+    // floating numbers
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (const f of run.floats) {
+      f.t += dt;
+      const a = 1 - f.t / 0.8;
+      if (a <= 0) continue;
+      ctx.globalAlpha = a;
+      ctx.font = `700 ${Math.round(15 / z)}px system-ui, sans-serif`;
+      ctx.fillStyle = f.gold ? COLORS.gold : "#ffffff";
+      ctx.fillText(f.text, f.x, f.y - f.t * 45 / z);
+    }
+    ctx.globalAlpha = 1;
+    run.floats = run.floats.filter((f) => f.t < 0.8);
 
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     if (run.perm.radar && isPlaying()) drawRadar(vx0, vx1, vy0, vy1);
