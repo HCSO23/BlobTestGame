@@ -6,7 +6,7 @@ const path = require("path");
 
 const PORT = Number(process.env.PORT) || 3000;
 const SCORES_FILE = path.join(__dirname, "scores.json");
-const MIN_TIME_MS = 5 * 60 * 1000; // anything faster is not a real run
+const MIN_TIME_MS = 10 * 60 * 1000; // anything faster is not a real run
 const MAX_TIME_MS = 6 * 60 * 60 * 1000;
 const KEEP_PER_BOARD = 100;
 const SHOW_PER_BOARD = 20;
@@ -15,8 +15,9 @@ const SHOW_PER_BOARD = 20;
 const STATIC = {
   "/": ["index.html", "text/html; charset=utf-8"],
   "/index.html": ["index.html", "text/html; charset=utf-8"],
-  "/game.js": ["game.js", "text/javascript; charset=utf-8"],
 };
+// game modules: only plain file names inside public/js, so nothing outside that folder can be read
+const JS_MODULE = /^\/js\/([a-z]+)\.js$/;
 
 // ---------- leaderboard storage ----------
 let scores = { all: [], fresh: [] };
@@ -115,7 +116,9 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  const entry = STATIC[url];
+  let entry = STATIC[url];
+  const mod = url.match(JS_MODULE);
+  if (!entry && mod) entry = [path.join("js", `${mod[1]}.js`), "text/javascript; charset=utf-8"];
   if (!entry) {
     res.writeHead(404, { "content-type": "text/plain" });
     return res.end("not found");

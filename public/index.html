@@ -4,42 +4,39 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Blob Devour</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='13' fill='%235fd4b4'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='17' r='13' fill='%235dcaa5'/><circle cx='12' cy='15' r='2.4' fill='%23fff'/><circle cx='20' cy='15' r='2.4' fill='%23fff'/><circle cx='12.6' cy='15.4' r='1.2' fill='%2304342c'/><circle cx='20.6' cy='15.4' r='1.2' fill='%2304342c'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    /* canvas colors (read by game.js) */
-    --bg: #0e1117;
-    --grid: #171c25;
-    --edge: #d86a6a;
-    /* UI */
-    --text: #e8ecf2;
-    --muted: #8b95a5;
-    --faint: #5c6677;
-    --surface: rgba(20, 25, 34, 0.84);
-    --surface-solid: #141922;
+    --bg: #06101c;
+    --text: #e6f2f1;
+    --muted: #8fa8b4;
+    --faint: #5a7383;
+    --surface: rgba(12, 30, 46, 0.86);
+    --surface-solid: #0d2032;
     --surface-2: rgba(255, 255, 255, 0.04);
-    --surface-3: rgba(255, 255, 255, 0.07);
-    --line: rgba(255, 255, 255, 0.08);
-    --line-strong: rgba(255, 255, 255, 0.14);
-    --accent: #5fd4b4;
-    --accent-ink: #062019;
-    --accent-soft: rgba(95, 212, 180, 0.14);
-    --goo: #a6e36f;
+    --surface-3: rgba(255, 255, 255, 0.075);
+    --line: rgba(196, 239, 224, 0.10);
+    --line-strong: rgba(196, 239, 224, 0.18);
+    --accent: #5dcaa5;
+    --accent-ink: #04342c;
+    --accent-soft: rgba(93, 202, 165, 0.15);
+    --goo: #b8ec8a;
     --essence: #b9a2ff;
-    --gold: #f2c14e;
-    --good: #5fd48a;
-    --bad: #ef6b6b;
+    --star: #ffd27a;
+    --gem: #7fd6f2;
+    --gold: #f2c45a;
+    --good: #6bd99a;
+    --bad: #f08f8f;
     --radius: 14px;
     --shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
-    font: 14px/1.45 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; touch-action: none; user-select: none;
-    -webkit-font-smoothing: antialiased; }
+    font: 14px/1.45 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; touch-action: none; user-select: none; -webkit-font-smoothing: antialiased; }
   canvas#c { display: block; width: 100vw; height: 100vh; }
   button { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; padding: 0; }
   button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -48,77 +45,89 @@
     backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2); box-shadow: var(--shadow); }
   .label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
   kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px;
-    font: 600 10px/1 Inter, system-ui, sans-serif; color: var(--muted); background: var(--surface-3);
-    border: 1px solid var(--line-strong); border-radius: 5px; }
-
-  /* ---------- HUD ---------- */
-  #hud { top: 16px; left: 16px; width: 240px; padding: 14px 16px 16px; }
-  .hud-top { display: flex; align-items: center; justify-content: space-between; }
-  #modeTag.fresh { color: var(--gold); }
+    font: 600 10px/1 Inter, system-ui, sans-serif; color: var(--muted); background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: 5px; }
+  .meter { height: 4px; border-radius: 999px; background: var(--surface-3); overflow: hidden; margin-top: 6px; }
+  .meter > div { height: 100%; width: 0; border-radius: inherit; }
+  .row-between { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
   .icon-btn { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); }
   .icon-btn:hover { background: var(--surface-3); color: var(--text); }
-  #muteBtn .off { display: none; }
-  #muteBtn.muted .on { display: none; }
-  #muteBtn.muted .off { display: block; }
+
+  /* loading */
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 50; }
+  #loading div { text-align: center; color: var(--muted); }
+  #loading .dot { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); margin: 0 auto 14px; animation: bob 1s ease-in-out infinite alternate; }
+  @keyframes bob { from { transform: translateY(-6px) scale(1.04, .96); } to { transform: translateY(6px) scale(.96, 1.04); } }
+
+  /* HUD */
+  #hud { top: 16px; left: 16px; width: 248px; padding: 14px 16px 16px; }
+  .hud-top { display: flex; align-items: center; justify-content: space-between; }
+  #modeTag.fresh { color: var(--gold); }
+  #muteBtn .off { display: none; } #muteBtn.muted .on { display: none; } #muteBtn.muted .off { display: block; }
   #timer { font-size: 40px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; margin-top: 4px; }
   #splitDelta { display: inline-block; margin-top: 6px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--surface-3); }
   #splitDelta:empty { display: none; }
-  #splitDelta.good { color: var(--good); background: rgba(95, 212, 138, 0.12); }
-  #splitDelta.bad { color: var(--bad); background: rgba(239, 107, 107, 0.12); }
+  #splitDelta.good { color: var(--good); background: rgba(107, 217, 154, 0.12); }
+  #splitDelta.bad { color: var(--bad); background: rgba(240, 143, 143, 0.12); }
   .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; margin-top: 12px; border-radius: 10px; overflow: hidden; background: var(--line); }
   .stat { background: var(--surface-solid); padding: 8px 10px; }
   .stat .label { font-size: 10px; }
   .stat b { display: block; font-size: 16px; font-weight: 700; margin-top: 2px; }
   .stat.goo b { color: var(--goo); }
-  .combo { margin-top: 12px; }
-  .row-between { display: flex; justify-content: space-between; align-items: baseline; }
+  .hud-sec { margin-top: 12px; }
+  #biomeName { font-weight: 700; font-size: 13px; }
+  #gateTxt { font-size: 12px; color: var(--muted); }
+  #gateFill { background: var(--accent); }
   #comboTxt { font-weight: 700; color: var(--gold); font-size: 13px; }
-  .meter { height: 4px; border-radius: 999px; background: var(--surface-3); overflow: hidden; margin-top: 6px; }
-  .meter > div { height: 100%; width: 0; border-radius: inherit; }
   #comboFill { background: var(--gold); }
-  #tracker { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  #tracker { padding-top: 12px; border-top: 1px solid var(--line); }
   #trackPct { font-weight: 700; font-size: 13px; color: var(--accent); }
   #trackFill { background: var(--accent); }
   .track-nums { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: var(--muted); }
   .track-nums b { color: var(--text); font-weight: 600; }
   #finalTag { margin-top: 10px; font-size: 12px; font-weight: 600; color: var(--gold); }
 
-  /* ---------- mini-map ---------- */
-  #minimapCard { left: 16px; bottom: 16px; padding: 8px; }
-  #minimap { display: block; width: 180px; height: 180px; border-radius: 8px; background: #0b0e13; }
+  /* banner */
+  #banner { position: fixed; top: 18px; left: 50%; transform: translate(-50%, -12px); opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s;
+    padding: 10px 18px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line-strong); backdrop-filter: blur(12px); text-align: center; }
+  #banner.show { opacity: 1; transform: translate(-50%, 0); }
+  #banner b { font-weight: 700; }
+  #banner span { color: var(--muted); margin-left: 8px; font-size: 13px; }
 
-  /* ---------- bottom controls ---------- */
+  /* mini-map */
+  #minimapCard { left: 16px; bottom: 16px; padding: 8px; }
+  #minimap { display: block; width: 180px; height: 180px; border-radius: 8px; }
+
+  /* bottom controls */
   #abilities { left: 50%; bottom: 18px; transform: translateX(-50%); padding: 8px; display: flex; gap: 8px; }
-  .ability { position: relative; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 14px 0 8px;
-    border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
+  .ability { position: relative; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 14px 0 8px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
   .ability:hover { background: var(--surface-3); }
-  .ring { --p: 1; position: relative; width: 36px; height: 36px; border-radius: 50%;
-    background: conic-gradient(var(--accent) calc(var(--p) * 360deg), var(--surface-3) 0); display: grid; place-items: center; }
+  .ring { --p: 1; position: relative; width: 36px; height: 36px; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--p) * 360deg), var(--surface-3) 0); display: grid; place-items: center; }
   .ring::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--surface-solid); }
   .ring span { position: relative; z-index: 1; font-size: 13px; font-weight: 700; }
   .ability .txt { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; }
   .ability .name { font-weight: 600; font-size: 13px; }
   .ability .sub { font-size: 11px; color: var(--muted); }
   .ability.ready .ring span { color: var(--accent); }
-  .ability.ready .ring { box-shadow: 0 0 0 0 rgba(95, 212, 180, 0.0); }
   #upgBtn { right: 16px; bottom: 18px; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 12px 0 16px; border-radius: 12px; }
   #upgBtn .name { font-weight: 600; font-size: 13px; }
   #upgBtn .goo { color: var(--goo); font-weight: 700; font-size: 13px; }
-  #upgBadge { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--goo); color: var(--accent-ink);
-    font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+  #upgBadge { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--goo); color: #1f3a0c; font-size: 11px; font-weight: 800; display: grid; place-items: center; }
   #upgBadge:empty { display: none; }
-  #upgBtn.has { border-color: rgba(166, 227, 111, 0.4); }
+  #upgBtn.has { border-color: rgba(184, 236, 138, 0.45); }
 
-  /* ---------- upgrade panel (toggle) ---------- */
-  #shop { top: 16px; right: 16px; max-height: calc(100vh - 100px); width: 344px; display: flex; flex-direction: column; overflow: hidden;
+  /* upgrade panel */
+  #shop { top: 16px; right: 16px; max-height: calc(100vh - 100px); width: 352px; display: flex; flex-direction: column; overflow: hidden;
     transform: translateX(calc(100% + 24px)); opacity: 0; pointer-events: none; transition: transform .22s ease, opacity .22s ease; }
   #shop.open { transform: none; opacity: 1; pointer-events: auto; }
   .shop-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px 12px 16px; }
   .shop-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
   .shop-head .right { display: flex; align-items: center; gap: 6px; }
-  .goo-pill { display: inline-flex; align-items: baseline; gap: 5px; padding: 4px 10px; border-radius: 999px;
-    background: rgba(166, 227, 111, 0.1); color: var(--goo); font-weight: 700; font-size: 15px; }
-  .goo-pill small { font-size: 11px; font-weight: 600; opacity: .8; }
+  .pill { display: inline-flex; align-items: baseline; gap: 5px; padding: 4px 10px; border-radius: 999px; font-weight: 700; font-size: 14px; }
+  .pill small { font-size: 11px; font-weight: 600; opacity: .8; }
+  .pill.goo { background: rgba(184, 236, 138, 0.1); color: var(--goo); }
+  .pill.ess { background: rgba(185, 162, 255, 0.12); color: var(--essence); }
+  .pill.star { background: rgba(255, 210, 122, 0.12); color: var(--star); }
+  .pill.gem { background: rgba(127, 214, 242, 0.12); color: var(--gem); }
   .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 0 12px; padding: 4px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
   .tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px 7px; border-radius: 9px; color: var(--muted); }
   .tile:hover { color: var(--text); background: var(--surface-2); }
@@ -134,53 +143,49 @@
   .detail { padding: 14px 16px 16px; overflow-y: auto; touch-action: pan-y; flex: 1; }
   .detail-head { display: flex; justify-content: space-between; align-items: center; }
   .detail-head strong { font-size: 16px; font-weight: 700; }
-  .tag { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
-    padding: 3px 8px; border-radius: 999px; background: var(--surface-3); }
+  .tag { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 3px 8px; border-radius: 999px; background: var(--surface-3); }
   .detail-desc { color: var(--muted); font-size: 12.5px; margin: 6px 0 12px; }
-  .up { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "main cost" "bar bar"; gap: 8px 12px; width: 100%;
-    text-align: left; padding: 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); margin-top: 8px;
-    transition: border-color .15s, background .15s; }
+  .up { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "main cost" "bar bar"; gap: 8px 12px; width: 100%; text-align: left; padding: 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); margin-top: 8px; transition: border-color .15s, background .15s; }
   .up:hover:not(:disabled) { border-color: var(--line-strong); background: var(--surface-3); }
   .up:disabled { cursor: default; }
   .up .main { grid-area: main; min-width: 0; }
   .up .nm { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+  .up .btag { font-size: 10px; font-weight: 600; color: var(--muted); padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line-strong); }
   .up .val { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .up .val .next { color: var(--accent); }
-  .up .cost { grid-area: cost; align-self: center; padding: 6px 10px; border-radius: 8px; font-weight: 700; font-size: 13px; white-space: nowrap;
-    color: var(--accent-ink); background: var(--goo); }
+  .up .cost { grid-area: cost; align-self: center; padding: 6px 10px; border-radius: 8px; font-weight: 700; font-size: 13px; white-space: nowrap; color: #1f3a0c; background: var(--goo); }
   .up:disabled .cost { background: var(--surface-3); color: var(--muted); }
   .up .cost.max { background: transparent; color: var(--faint); padding: 6px 0; }
   .up .pips { grid-area: bar; display: flex; gap: 4px; }
   .up .pips i { flex: 1; height: 4px; border-radius: 999px; background: var(--surface-3); }
   .up .pips i.on { background: var(--accent); }
-  .up.unlock { border-color: rgba(95, 212, 180, 0.35); background: var(--accent-soft); }
+  .up.unlock { border-color: rgba(93, 202, 165, 0.35); background: var(--accent-soft); }
   .up.flash { animation: flash .4s ease; }
   @keyframes flash { from { box-shadow: 0 0 0 2px var(--goo); } to { box-shadow: 0 0 0 0 transparent; } }
-  .shop-hint { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 0; padding: 10px 16px 14px;
-    border-top: 1px solid var(--line); color: var(--faint); font-size: 11.5px; }
+  .shop-hint { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 0; padding: 10px 16px 14px; border-top: 1px solid var(--line); color: var(--faint); font-size: 11.5px; }
 
-  /* ---------- menu ---------- */
-  #overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px;
-    background: radial-gradient(ellipse at center, rgba(14, 17, 23, 0.5), rgba(14, 17, 23, 0.86)); }
-  #menu { width: min(720px, 100%); max-height: calc(100vh - 40px); display: flex; flex-direction: column;
-    background: var(--surface-solid); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5); overflow: hidden; }
+  /* menu */
+  #overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; background: radial-gradient(ellipse at center, rgba(6, 16, 28, 0.45), rgba(6, 16, 28, 0.85)); }
+  #menu { width: min(760px, 100%); max-height: calc(100vh - 40px); display: flex; flex-direction: column; background: var(--surface-solid); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5); overflow: hidden; }
   .menu-head { display: flex; align-items: center; gap: 14px; padding: 22px 26px 0; }
-  .logo { width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #8be6cd, var(--accent) 60%, #2f8f77);
-    box-shadow: 0 0 0 6px var(--accent-soft); flex: none; }
+  .logo { width: 40px; height: 40px; flex: none; }
   #menu h1 { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -.02em; }
-  .head-meta { margin-left: auto; display: flex; gap: 8px; }
-  .chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); font-size: 12px; color: var(--muted); }
-  .chip b { color: var(--text); font-weight: 700; }
-  .chip.ess b { color: var(--essence); }
-  .menu-tabs { display: flex; gap: 4px; padding: 18px 26px 0; border-bottom: 1px solid var(--line); }
-  .mtab { padding: 10px 12px; font-weight: 600; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .head-meta { margin-left: auto; display: flex; gap: 6px; }
+  .menu-tabs { display: flex; gap: 2px; padding: 18px 22px 0; border-bottom: 1px solid var(--line); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; flex: none; }
+  .menu-tabs::-webkit-scrollbar { display: none; }
+  .mtab { padding: 10px 12px; font-weight: 600; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
   .mtab:hover { color: var(--text); }
   .mtab.on { color: var(--text); border-bottom-color: var(--accent); }
   .mtab .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--essence); margin-left: 6px; vertical-align: middle; }
+  .mtab[data-pane="ascend"] .dot { background: var(--star); }
   .pane { padding: 22px 26px 26px; overflow-y: auto; touch-action: pan-y; display: flex; flex-direction: column; gap: 18px; }
+  .section-title { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .note { color: var(--muted); font-size: 13px; margin: 0; }
+  .note b { color: var(--text); font-weight: 600; }
 
-  #results { border-radius: 14px; padding: 18px; background: linear-gradient(180deg, rgba(242, 193, 78, 0.10), rgba(242, 193, 78, 0.03));
-    border: 1px solid rgba(242, 193, 78, 0.22); }
+  .play-top { display: grid; grid-template-columns: 1fr 140px; gap: 18px; align-items: center; }
+  #preview { width: 140px; height: 140px; border-radius: 16px; background: #16465f; }
+  #results { border-radius: 14px; padding: 18px; background: linear-gradient(180deg, rgba(242, 196, 90, 0.10), rgba(242, 196, 90, 0.03)); border: 1px solid rgba(242, 196, 90, 0.22); }
   #resMode { color: var(--gold); }
   #results .big { font-size: 44px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; margin-top: 4px; }
   #resPb { color: var(--muted); font-size: 13px; margin-top: 2px; }
@@ -188,62 +193,65 @@
   .res-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
   .res-grid div { padding: 8px 10px; border-radius: 10px; background: rgba(0, 0, 0, 0.2); }
   .res-grid b { display: block; font-size: 15px; font-weight: 700; margin-top: 2px; }
-  #resEss { color: var(--essence); }
-  #resEssWhy { display: block; color: var(--faint); font-size: 11.5px; margin-top: 8px; }
+  #resEss { color: var(--essence); } #resGems { color: var(--gem); }
+  #resWhy { display: block; color: var(--faint); font-size: 11.5px; margin-top: 8px; }
   .res-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
   #submitMsg { font-size: 12px; color: var(--muted); }
-
   .field { display: flex; flex-direction: column; gap: 6px; }
-  #name { width: 100%; background: var(--surface-2); color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px;
-    padding: 11px 12px; font: inherit; font-size: 14px; outline: none; user-select: text; }
+  #name { width: 100%; background: var(--surface-2); color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px; padding: 11px 12px; font: inherit; font-size: 14px; outline: none; user-select: text; }
   #name:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   .start { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; border-radius: 10px;
-    font-weight: 600; background: var(--surface-3); border: 1px solid var(--line-strong); transition: background .15s, border-color .15s; }
-  .btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; border-radius: 10px; font-weight: 600; background: var(--surface-3); border: 1px solid var(--line-strong); transition: background .15s; }
+  .btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.11); }
   .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-size: 15px; }
-  .btn.primary:hover { background: #79ddc2; }
-  .btn.fresh { color: var(--gold); border-color: rgba(242, 193, 78, 0.3); }
+  .btn.primary:hover { background: #7dd8b9; }
+  .btn.fresh { color: var(--gold); border-color: rgba(242, 196, 90, 0.3); }
+  .btn.star { background: var(--star); color: #3d2a05; border-color: transparent; }
+  .btn.danger { background: #e9806f; color: #3a0f08; border-color: transparent; }
   .btn:disabled { opacity: .5; cursor: default; }
   .hint { color: var(--faint); font-size: 12px; margin: -8px 0 0; }
-
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; border-radius: 12px; overflow: hidden; background: var(--line); }
   .stats div { background: var(--surface-solid); padding: 10px 12px; }
   .stats b { display: block; font-size: 15px; font-weight: 700; margin-top: 2px; }
 
-  .perk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .perk { display: flex; flex-direction: column; gap: 10px; text-align: left; padding: 14px; border-radius: 12px; background: var(--surface-2);
-    border: 1px solid var(--line); transition: border-color .15s, background .15s; }
-  .perk:hover:not(:disabled) { border-color: var(--line-strong); background: var(--surface-3); }
-  .perk:disabled { cursor: default; }
-  .perk .top { display: flex; align-items: center; gap: 10px; }
-  .perk .pico { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: rgba(185, 162, 255, 0.12); color: var(--essence); font-size: 15px; flex: none; }
-  .perk .pn { font-weight: 600; font-size: 13.5px; }
-  .perk .pd { color: var(--muted); font-size: 12px; }
-  .perk .bottom { display: flex; align-items: center; justify-content: space-between; }
-  .perk .plv { font-size: 11px; color: var(--faint); }
-  .perk .cost { padding: 5px 9px; border-radius: 8px; font-weight: 700; font-size: 12px; white-space: nowrap; color: #1a1033; background: var(--essence); }
-  .perk:disabled .cost { background: var(--surface-3); color: var(--faint); }
-  .perk.owned .cost { background: transparent; color: var(--good); padding-right: 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .item { display: flex; flex-direction: column; gap: 10px; text-align: left; padding: 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); transition: border-color .15s, background .15s; }
+  .item:hover:not(:disabled) { border-color: var(--line-strong); background: var(--surface-3); }
+  .item:disabled { cursor: default; }
+  .item .top { display: flex; align-items: center; gap: 10px; }
+  .item .ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 15px; flex: none; }
+  .item.ess .ico { background: rgba(185, 162, 255, 0.12); color: var(--essence); }
+  .item.star .ico { background: rgba(255, 210, 122, 0.12); color: var(--star); }
+  .item.gem .ico { background: rgba(127, 214, 242, 0.12); color: var(--gem); }
+  .item .nm { font-weight: 600; font-size: 13.5px; }
+  .item .ds { color: var(--muted); font-size: 12px; }
+  .item .bottom { display: flex; align-items: center; justify-content: space-between; }
+  .item .lv { font-size: 11px; color: var(--faint); }
+  .item .cost { padding: 5px 9px; border-radius: 8px; font-weight: 700; font-size: 12px; white-space: nowrap; }
+  .item.ess .cost { color: #1a1033; background: var(--essence); }
+  .item.star .cost { color: #3d2a05; background: var(--star); }
+  .item.gem .cost { color: #06303d; background: var(--gem); }
+  .item:disabled .cost { background: var(--surface-3); color: var(--faint); }
+  .item .cost.done { background: transparent; color: var(--good); padding-right: 0; }
+  .item.equipped { border-color: var(--accent); }
+  .swatch { width: 34px; height: 34px; border-radius: 50%; flex: none; box-shadow: inset -4px -5px 0 rgba(0,0,0,0.15); }
+
+  #ascendCard { border-radius: 14px; padding: 18px; background: linear-gradient(180deg, rgba(255, 210, 122, 0.10), rgba(255, 210, 122, 0.02)); border: 1px solid rgba(255, 210, 122, 0.25); display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  #ascendCard .big { font-size: 26px; font-weight: 800; color: var(--star); }
 
   .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--line); }
   .tab { padding: 5px 12px; border-radius: 7px; font-size: 12px; font-weight: 600; color: var(--muted); }
   .tab.on { background: var(--surface-3); color: var(--text); }
-  .section-title { display: flex; justify-content: space-between; align-items: center; }
   #lbList { margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
   #lbList li { display: grid; grid-template-columns: 28px 1fr auto 76px; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); }
   #lbList li:first-child { border-top: 0; }
   #lbList li .rank { color: var(--faint); font-weight: 700; font-size: 12px; }
-  #lbList li:nth-child(1) .rank { color: var(--gold); }
-  #lbList li:nth-child(2) .rank { color: #c8d0dc; }
-  #lbList li:nth-child(3) .rank { color: #d49a6a; }
+  #lbList li:nth-child(1) .rank { color: var(--gold); } #lbList li:nth-child(2) .rank { color: #c8d0dc; } #lbList li:nth-child(3) .rank { color: #d49a6a; }
   #lbList li .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
   #lbList li .pl { font-size: 11px; font-weight: 600; color: var(--essence); padding: 2px 7px; border-radius: 999px; background: rgba(185, 162, 255, 0.1); }
   #lbList li .num { text-align: right; font-weight: 600; }
-  #lbList li.me { background: var(--accent-soft); }
-  #lbList li.me .who { color: var(--accent); }
+  #lbList li.me { background: var(--accent-soft); } #lbList li.me .who { color: var(--accent); }
   #lbEmpty { color: var(--muted); padding: 22px; text-align: center; border: 1px dashed var(--line-strong); border-radius: 12px; }
-
   .guide { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .guide div { padding: 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
   .guide h4 { margin: 0 0 6px; font-size: 13px; font-weight: 700; }
@@ -252,17 +260,18 @@
   .keys span:nth-child(odd) { display: flex; gap: 4px; }
 
   @media (max-width: 760px) {
-    .menu-head, .menu-tabs, .pane { padding-left: 16px; padding-right: 16px; }
+    .menu-head, .pane { padding-left: 16px; padding-right: 16px; }
+    .menu-tabs { padding-left: 10px; padding-right: 10px; }
     .head-meta { display: none; }
-    .perk-grid, .guide { grid-template-columns: 1fr; }
+    .grid2, .guide { grid-template-columns: 1fr; }
     .res-grid { grid-template-columns: repeat(2, 1fr); }
     .start { grid-template-columns: 1fr; }
-    #hud { width: auto; min-width: 180px; padding: 10px 12px 12px; top: 10px; left: 10px; }
+    .play-top { grid-template-columns: 1fr; } #preview { display: none; }
+    #hud { width: auto; min-width: 190px; padding: 10px 12px 12px; top: 10px; left: 10px; }
     #timer { font-size: 28px; }
     #minimapCard { top: 10px; right: 10px; left: auto; bottom: auto; padding: 6px; }
     #minimap { width: 110px; height: 110px; }
-    #shop { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 64vh; border-radius: 18px 18px 0 0;
-      transform: translateY(105%); }
+    #shop { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 64vh; border-radius: 18px 18px 0 0; transform: translateY(105%); }
     .shop-hint { display: none; }
     #abilities { left: 12px; transform: none; bottom: 12px; }
     #upgBtn { right: 12px; bottom: 12px; }
@@ -272,6 +281,7 @@
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="loading"><div><div class="dot"></div>Filling the ocean…</div></div>
 
 <div id="hud" class="card" hidden>
   <div class="hud-top">
@@ -285,13 +295,17 @@
   <div id="splitDelta" class="num"></div>
   <div class="stat-grid">
     <div class="stat goo"><span class="label">Goo</span><b id="goo" class="num">0</b></div>
-    <div class="stat"><span class="label">Mass</span><b id="mass" class="num">0</b></div>
+    <div class="stat"><span class="label">Size</span><b id="size" class="num">0</b></div>
   </div>
-  <div class="combo">
+  <div class="hud-sec">
+    <div class="row-between"><span id="biomeName">Shallows</span><span id="gateTxt" class="num"></span></div>
+    <div class="meter"><div id="gateFill"></div></div>
+  </div>
+  <div class="hud-sec">
     <div class="row-between"><span class="label">Combo</span><span id="comboTxt" class="num">—</span></div>
     <div class="meter"><div id="comboFill"></div></div>
   </div>
-  <div id="tracker" hidden>
+  <div id="tracker" class="hud-sec" hidden>
     <div class="row-between"><span class="label">Map cleared</span><span id="trackPct" class="num">0%</span></div>
     <div class="meter"><div id="trackFill"></div></div>
     <div class="track-nums"><span>Eaten <b id="trackEaten" class="num">0</b></span><span>Left <b id="trackLeft" class="num">0</b></span></div>
@@ -299,10 +313,11 @@
   <div id="finalTag" class="num" hidden></div>
 </div>
 
+<div id="banner"><b id="bannerTitle"></b><span id="bannerSub"></span></div>
 <div id="minimapCard" class="card" hidden><canvas id="minimap" width="180" height="180"></canvas></div>
 
 <div id="abilities" class="card" hidden>
-  <button class="ability" id="dashBtn" hidden>
+  <button class="ability" id="dashBtn">
     <span class="ring" id="dashRing"><span id="dashSub" class="num">1</span></span>
     <span class="txt"><span class="name">Dash</span><span class="sub">charges</span></span>
     <kbd>Space</kbd>
@@ -320,10 +335,8 @@
   <div class="shop-head">
     <h2>Upgrades</h2>
     <div class="right">
-      <span class="goo-pill num"><span id="shopGoo">0</span><small>Goo</small></span>
-      <button id="shopClose" class="icon-btn" aria-label="Close upgrades" title="Close (U)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
+      <span class="pill goo num"><span id="shopGoo">0</span><small>Goo</small></span>
+      <button id="shopClose" class="icon-btn" aria-label="Close upgrades" title="Close (U)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
   </div>
   <div id="tiles" class="tiles"></div>
@@ -331,19 +344,22 @@
   <p class="shop-hint"><kbd>U</kbd> toggle · <kbd>1</kbd>–<kbd>3</kbd> select · <kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd> buy</p>
 </aside>
 
-<div id="overlay">
+<div id="overlay" hidden>
   <div id="menu">
     <header class="menu-head">
-      <div class="logo" aria-hidden="true"></div>
+      <svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="21" r="17" fill="#5dcaa5"/><ellipse cx="13" cy="13" rx="5" ry="3" fill="#c4efe0" opacity=".6" transform="rotate(-25 13 13)"/><ellipse cx="15" cy="19" rx="3" ry="3.6" fill="#fff"/><ellipse cx="25" cy="19" rx="3" ry="3.6" fill="#fff"/><circle cx="16" cy="19.6" r="1.7" fill="#04342c"/><circle cx="26" cy="19.6" r="1.7" fill="#04342c"/></svg>
       <h1>Blob Devour</h1>
       <div class="head-meta">
-        <span class="chip">Prestige <b id="stPrestige" class="num">0</b></span>
-        <span class="chip ess">Essence <b id="stEssence" class="num">0</b></span>
+        <span class="pill ess num"><span id="hdEss">0</span><small>Essence</small></span>
+        <span class="pill star num"><span id="hdStars">0</span><small>Stars</small></span>
+        <span class="pill gem num"><span id="hdGems">0</span><small>Gems</small></span>
       </div>
     </header>
     <nav class="menu-tabs">
       <button class="mtab on" data-pane="play">Play</button>
       <button class="mtab" data-pane="perks">Perks<span class="dot" id="perkDot" hidden></span></button>
+      <button class="mtab" data-pane="ascend">Ascend<span class="dot" id="ascendDot" hidden></span></button>
+      <button class="mtab" data-pane="gems">Gem shop</button>
       <button class="mtab" data-pane="board">Leaderboard</button>
       <button class="mtab" data-pane="guide">How to play</button>
     </nav>
@@ -354,27 +370,31 @@
         <div class="big num" id="resTime">0:00.0</div>
         <div id="resPb"></div>
         <div class="res-grid">
-          <div><span class="label">Combo</span><b id="resCombo" class="num">0</b></div>
+          <div><span class="label">Best combo</span><b id="resCombo" class="num">0</b></div>
           <div><span class="label">Goo</span><b id="resGoo" class="num">0</b></div>
-          <div><span class="label">Upgrades</span><b id="resUps" class="num">0</b></div>
           <div><span class="label">Essence</span><b id="resEss" class="num">0</b></div>
+          <div><span class="label">Gems</span><b id="resGems" class="num">0</b></div>
         </div>
-        <span id="resEssWhy"></span>
+        <span id="resWhy"></span>
         <div class="res-actions">
           <button class="btn" id="submitBtn">Submit to leaderboard</button>
           <span id="submitMsg"></span>
         </div>
       </div>
-
-      <div class="field">
-        <label class="label" for="name">Player name</label>
-        <input id="name" maxlength="16" placeholder="Enter a name" autocomplete="off">
+      <div class="play-top">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="field">
+            <label class="label" for="name">Player name</label>
+            <input id="name" maxlength="16" placeholder="Enter a name" autocomplete="off">
+          </div>
+          <div class="start">
+            <button class="btn primary" id="startNormal">Start run</button>
+            <button class="btn fresh" id="startFresh" title="Ignores all perks and Stars; counts for the Fresh leaderboard">Fresh run</button>
+          </div>
+        </div>
+        <canvas id="preview" width="280" height="280"></canvas>
       </div>
-      <div class="start">
-        <button class="btn primary" id="startNormal">Start run</button>
-        <button class="btn fresh" id="startFresh" title="Ignores all perks; counts for the Fresh leaderboard">Fresh run</button>
-      </div>
-      <p class="hint">Fresh runs ignore your perks and count for the Fresh leaderboard.</p>
+      <p class="hint">Fresh runs ignore your perks and Stars and count for the Fresh leaderboard.</p>
       <div class="stats">
         <div><span class="label">Best</span><b id="stBestN" class="num">—</b></div>
         <div><span class="label">Best fresh</span><b id="stBestF" class="num">—</b></div>
@@ -383,17 +403,40 @@
     </section>
 
     <section class="pane" data-pane="perks" hidden>
-      <div class="section-title"><span class="label">Permanent perks · bought with Essence</span><span class="chip ess">Essence <b id="stEssence2" class="num">0</b></span></div>
-      <div id="prestigeCards" class="perk-grid"></div>
+      <div class="section-title"><span class="label">Essence perks · reset when you Ascend</span><span class="pill ess num"><span id="essNow">0</span><small>Essence</small></span></div>
+      <div id="perkCards" class="grid2"></div>
+      <div class="section-title"><span class="label">Permanent unlocks · kept forever</span></div>
+      <div id="unlockCards" class="grid2"></div>
+    </section>
+
+    <section class="pane" data-pane="ascend" hidden>
+      <p class="note">Ascending resets your <b>Essence and Essence perks</b> and turns the Essence you've earned since your last Ascension into <b>Stars</b>. Stars buy permanent upgrades. Best times, gems, cosmetics and permanent unlocks are kept.</p>
+      <div id="ascendCard">
+        <div>
+          <div class="label">Ascend now for</div>
+          <div class="big num"><span id="ascStars">0</span> ★</div>
+          <div class="note" id="ascNote"></div>
+        </div>
+        <button class="btn star" id="ascendBtn">Ascend</button>
+      </div>
+      <div class="section-title"><span class="label">Star shop · permanent</span><span class="pill star num"><span id="starsNow">0</span><small>Stars</small></span></div>
+      <div id="starCards" class="grid2"></div>
+    </section>
+
+    <section class="pane" data-pane="gems" hidden>
+      <div class="section-title"><p class="note">Earn gems by clearing maps, clearing each biome for the first time and hitting milestones. Gems never affect leaderboards.</p><span class="pill gem num"><span id="gemsNow">0</span><small>Gems</small></span></div>
+      <div class="section-title"><span class="label">Skins</span></div>
+      <div id="cosSkin" class="grid2"></div>
+      <div class="section-title"><span class="label">Eyes, Dash trails and bite effects</span></div>
+      <div id="cosOther" class="grid2"></div>
+      <div class="section-title"><span class="label">Essence packs</span></div>
+      <div id="packCards" class="grid2"></div>
     </section>
 
     <section class="pane" data-pane="board" hidden>
       <div class="section-title">
         <span class="label">Fastest clears</span>
-        <div class="seg">
-          <button class="tab on" data-board="all">All runs</button>
-          <button class="tab" data-board="fresh">Fresh</button>
-        </div>
+        <div class="seg"><button class="tab on" data-board="all">All runs</button><button class="tab" data-board="fresh">Fresh</button></div>
       </div>
       <ol id="lbList"></ol>
       <div id="lbEmpty" hidden>No times yet — be the first.</div>
@@ -401,10 +444,10 @@
 
     <section class="pane" data-pane="guide" hidden>
       <div class="guide">
-        <div><h4>Goal</h4><p>Eat every blob on the map. The clock stops on the last one. Blobs gather in clusters; gold blobs are worth more.</p></div>
-        <div><h4>Grow</h4><p>Bigger means faster, and the view widens as you grow. Eat in quick succession for a combo (up to ×2.6 Goo).</p></div>
-        <div><h4>Upgrade</h4><p>Spend Goo on upgrades mid-run. Each tier is a big step: early tiers are cheap, late tiers cost a fortune.</p></div>
-        <div><h4>Prestige</h4><p>Every clear earns Essence for permanent perks, like the mini-map and progress tracker.</p></div>
+        <div><h4>Goal</h4><p>Eat every blob in the ocean. The clock stops on the last one.</p></div>
+        <div><h4>Biomes</h4><p>The Shallows are in the middle; the Reef, Trench and Abyss ring around it. You can only eat a biome's blobs once you're big enough.</p></div>
+        <div><h4>Upgrade</h4><p>Spend Goo mid-run. Each tier is tagged with the biome it's meant for.</p></div>
+        <div><h4>Prestige</h4><p>Clears earn Essence for perks. Later, Ascend to turn Essence into Stars for permanent power.</p></div>
       </div>
       <div class="keys">
         <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>Move (or follow the mouse / your finger)</span>
@@ -417,6 +460,6 @@
   </div>
 </div>
 
-<script src="game.js"></script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
