@@ -1,25 +1,38 @@
-# Blob Arena
+# Blob Devour
 
-A tiny multiplayer .io game. Move your blob with the mouse (or your finger), eat pellets to grow, and eat smaller players.
+An incremental speedrun game: eat every blob on the map as fast as you can.
+
+- **Goal:** the map has 600 small blobs that don't move. Eat them all to stop the clock. The map is the same every run, so you can learn a route.
+- **Goo:** eating gives mass and Goo. Spend Goo mid-run on abilities and their sub-upgrades:
+  - Speed
+  - Magnet
+  - Gobble
+  - Dash (Space)
+  - Split (E)
+
+  These reset every run.
+- **Prestige:** finishing a run earns Essence, which you spend on permanent perks like a Goo multiplier, head-start abilities or the blob radar.
+- **Fresh runs:** ignore all prestige perks and count for the Fresh leaderboard.
+- **Controls:** R restarts instantly. Esc goes back to the menu.
 
 ## Run locally
 
 ```bash
-npm install
 npm start
 ```
 
-Open http://localhost:3000 in two tabs to see multiplayer.
+Open http://localhost:3000. Add `?debug=1` for a 20-blob test map, which uses a separate save and can't be submitted.
 
-## Deploy (Render, free)
+## Deploy
 
-1. Push this repo to GitHub.
-2. On https://dashboard.render.com choose **New → Blueprint**, then pick the repo. Render reads `render.yaml`.
-3. Share the `https://<name>.onrender.com` link. Anyone who opens it is in the game.
-
-The free tier sleeps after about 15 minutes idle, so the first visit after that takes about 30 seconds to wake.
+Pushing to `main` redeploys on Render through `render.yaml`.
 
 ## How it works
 
-- `server.js`: a Node HTTP server that serves `public/` and runs a 30 Hz game loop with WebSockets at `/ws`. The server decides all movement, eating and respawns.
-- `public/game.js`: canvas client. It sends only the steering direction and draws the 15 Hz snapshots it receives, smoothed between updates.
+- `public/game.js`: the whole game runs in the browser. Progress is saved in localStorage.
+- `server.js`: serves the page and the leaderboard API:
+  - `GET /api/leaderboard`
+  - `POST /api/score`
+
+  Scores are kept in `scores.json`. On Render's free plan that file is wiped whenever the service restarts or redeploys.
+- Run times are reported by the browser, so the leaderboard can be cheated. That's fine for a test game.
