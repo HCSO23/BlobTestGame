@@ -3,12 +3,14 @@
   const params = new URLSearchParams(location.search);
   const DEBUG = params.get("debug") === "1";
   const CFG = {
-    world: DEBUG ? 3000 : 6500,
-    blobCount: DEBUG ? 20 : 2500,
+    world: DEBUG ? 3000 : 20500,
+    blobCount: DEBUG ? 20 : 25000,
     startMass: 20,
-    parMs: DEBUG ? 30000 : 18 * 60 * 1000, // beat par (18 min) for bonus Essence
+    parMs: DEBUG ? 30000 : 25 * 60 * 1000, // beat par (25 min) for bonus Essence
     seed: 1337, // same map every run, so routes can be learned
-    baseSpeed: 100,
+    baseSpeed: 90,
+    sizeSpeedExp: 0.35, // bigger blobs move faster: speed × (radius/18)^this
+    gridSize: 250, // spatial grid cell size for blob lookups
     accel: 9, // how quickly velocity catches up to input (higher = less drift)
     splitCount: 6, // speedrun splits per run
     comboBase: 1.1, // seconds between bites to keep a combo
@@ -19,28 +21,33 @@
   const PERK_MULT = 1.6;
   const BUY_KEYS = ["z", "x", "c"];
 
+  // Upgrade tiers scale with the map: more blobs means more Goo, so every upgrade gets more (smaller)
+  // levels at higher prices. TIER is 10 on the full map; levels and base prices scale by √TIER and each
+  // level gives 1/√TIER of the old step, so fully upgraded effects stay the same.
+  const TIER = DEBUG ? 1 : CFG.blobCount / 2500;
+  const LS = Math.sqrt(TIER);
+  const lv = (n) => Math.round(n * LS);
+  const pc = (n) => Math.round(n * LS);
+  const per = (l) => l / LS;
+  const pct = (x) => `${Math.round(x)}%`;
+
   // In-run abilities. unlock 0 = owned from the start. Each sub-upgrade's level feeds stats().
   const ABILITIES = [
-    { id: "speed", icon: "»", name: "Speed", kind: "Passive", desc: "Higher top speed.", unlock: 0,
+    { id: "speed", icon: "»", name: "Speed", kind: "Passive", desc: "Higher top speed. You also get faster as you grow.", unlock: 0,
       subs: [
-        { id: "lvl", name: "Top speed", max: 15, base: 20, step: 24, info: (l) => `+${l * 6}% speed` },
+        { id: "lvl", name: "Top speed", max: lv(15), base: pc(20), step: 48, info: (l) => `+${pct(per(l) * 6)} speed` },
       ] },
     { id: "gobble", icon: "✦", name: "Gobble", kind: "Passive", desc: "More from every blob, longer combos.", unlock: 0,
       subs: [
-        { id: "goo", name: "Goo per blob", max: 12, base: 30, step: 30, info: (l) => `+${l * 15}% Goo` },
-        { id: "combo", name: "Combo window", max: 6, base: 160, step: 120, info: (l) => `${(CFG.comboBase + 0.2 * l).toFixed(1)}s to keep combo` },
-        { id: "mass", name: "Mass per blob", max: 6, base: 100, step: 80, info: (l) => `+${l * 15}% mass` },
+        { id: "goo", name: "Goo per blob", max: lv(12), base: pc(30), step: 60, info: (l) => `+${pct(per(l) * 15)} Goo` },
+        { id: "combo", name: "Combo window", max: lv(6), base: pc(160), step: 240, info: (l) => `${(CFG.comboBase + 0.2 * per(l)).toFixed(2)}s to keep combo` },
+        { id: "mass", name: "Mass per blob", max: lv(6), base: pc(100), step: 160, info: (l) => `+${pct(per(l) * 15)} mass` },
       ] },
-    { id: "magnet", icon: "◎", name: "Magnet", kind: "Passive", desc: "Pull nearby blobs toward you.", unlock: 150,
+    { id: "dash", icon: "➤", name: "Dash", kind: "Active · Space", desc: "Short burst in your aim direction; reach grows with your size. Wider pickup while dashing; a gold blob mid-dash refunds the charge.", unlock: pc(300),
       subs: [
-        { id: "range", name: "Range", max: 12, base: 100, step: 60, info: (l) => `${40 + 20 * l}px reach` },
-        { id: "pull", name: "Pull strength", max: 6, base: 140, step: 100, info: (l) => `${90 + 40 * l}px/s pull` },
-      ] },
-    { id: "dash", icon: "➤", name: "Dash", kind: "Active · Space", desc: "Short burst in your aim direction. Wider pickup while dashing; a gold blob mid-dash refunds the charge.", unlock: 300,
-      subs: [
-        { id: "cooldown", name: "Cooldown", max: 10, base: 200, step: 100, info: (l) => `${(3.5 * 0.88 ** l).toFixed(2)}s recharge` },
-        { id: "distance", name: "Distance", max: 8, base: 200, step: 120, info: (l) => `${Math.round(180 * (1 + 0.15 * l))}px dash` },
-        { id: "charges", name: "Charges", max: 4, base: 800, step: 600, info: (l) => `${1 + l} charge${l ? "s" : ""}` },
+        { id: "cooldown", name: "Cooldown", max: lv(10), base: pc(200), step: 200, info: (l) => `${(3.5 * 0.88 ** per(l)).toFixed(2)}s recharge` },
+        { id: "distance", name: "Distance", max: lv(8), base: pc(200), step: 240, info: (l) => `+${pct(per(l) * 15)} dash distance` },
+        { id: "charges", name: "Charges", max: 4, base: 1600 * TIER, step: 1200 * TIER, info: (l) => `${1 + l} charge${l ? "s" : ""}` },
       ] },
   ];
 
@@ -48,9 +55,8 @@
   const PERKS = [
     { id: "gooMult", name: "Goo multiplier", max: 10, base: 5, info: (l) => `+${l * 20}% Goo` },
     { id: "startSpeed", name: "Quick feet", max: 5, base: 6, info: (l) => `+${l * 5}% base speed` },
-    { id: "startGoo", name: "Starting Goo", max: 6, base: 4, info: (l) => `start with ${l * 25} Goo` },
+    { id: "startGoo", name: "Starting Goo", max: 6, base: 4, info: (l) => `start with ${Math.round(l * 25 * LS)} Goo` },
     { id: "headDash", name: "Head start: Dash", max: 1, base: 10, info: () => "start runs with Dash unlocked" },
-    { id: "headMagnet", name: "Head start: Magnet", max: 1, base: 8, info: () => "start runs with Magnet unlocked" },
     { id: "radar", name: "Blob radar", max: 1, base: 12, info: () => "arrows point to the nearest blobs" },
   ];
 
@@ -92,7 +98,10 @@
     return defaultSave();
   }
   let save = loadSave();
-  if (save.perks.headSplit) { save.perks.headMagnet = 1; delete save.perks.headSplit; }
+  // Split and Magnet were removed: refund their head-start perks
+  if (save.perks.headSplit) { save.essence += 15; delete save.perks.headSplit; }
+  if (save.perks.headMagnet) { save.essence += 8; delete save.perks.headMagnet; }
+  persist();
   function persist() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {}
   }
@@ -128,7 +137,7 @@
       unlock: ctx,
       eat(combo, gold) {
         const now = performance.now();
-        if (!gold && now - lastEat < 28) return; // avoid a wall of noise when magnet pulls many at once
+        if (!gold && now - lastEat < 28) return; // avoid a wall of noise when eating many at once
         lastEat = now;
         // pitch climbs with the combo (one octave over 24 bites) so streaks sound like streaks
         const f = 330 * 2 ** (Math.min(combo, 24) / 24);
@@ -154,7 +163,7 @@
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
       const v = speed * (0.5 + Math.random() * 0.7);
-      run.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: 0.35 + Math.random() * 0.25, color, size: 1.5 + Math.random() * 2.2 });
+      run.parts.push({ x, y, vx: (Math.cos(a) * v) / cam.zoom, vy: (Math.sin(a) * v) / cam.zoom, t: 0, life: 0.3 + Math.random() * 0.2, color, size: (1.2 + Math.random() * 1.3) / cam.zoom });
     }
     if (run.parts.length > 500) run.parts.splice(0, run.parts.length - 500);
   }
@@ -196,6 +205,52 @@
     return blobs;
   }
 
+  // Blobs bucketed into a coarse grid so eating, drawing and the radar only look at nearby cells.
+  function makeGrid(blobs) {
+    const cs = CFG.gridSize;
+    const gw = Math.ceil(CFG.world / cs);
+    const cells = Array.from({ length: gw * gw }, () => []);
+    for (const b of blobs) cells[Math.min(gw - 1, Math.floor(b.y / cs)) * gw + Math.min(gw - 1, Math.floor(b.x / cs))].push(b);
+    return { cs, gw, cells };
+  }
+  function eachBlobIn(x0, y0, x1, y1, fn) {
+    const g = run.grid;
+    const gx0 = Math.max(0, Math.floor(x0 / g.cs)), gx1 = Math.min(g.gw - 1, Math.floor(x1 / g.cs));
+    const gy0 = Math.max(0, Math.floor(y0 / g.cs)), gy1 = Math.min(g.gw - 1, Math.floor(y1 / g.cs));
+    for (let gy = gy0; gy <= gy1; gy++) {
+      for (let gx = gx0; gx <= gx1; gx++) {
+        const cell = g.cells[gy * g.gw + gx];
+        for (let i = 0; i < cell.length; i++) if (cell[i].alive) fn(cell[i]);
+      }
+    }
+  }
+  // The `count` nearest live blobs outside the view rectangle, searched ring by ring outward.
+  function nearestOutside(cx, cy, count, view) {
+    const g = run.grid;
+    const ccx = Math.floor(cx / g.cs), ccy = Math.floor(cy / g.cs);
+    const found = [];
+    for (let ring = 0; ring < g.gw; ring++) {
+      for (let gy = ccy - ring; gy <= ccy + ring; gy++) {
+        if (gy < 0 || gy >= g.gw) continue;
+        const edgeRow = gy === ccy - ring || gy === ccy + ring;
+        for (let gx = ccx - ring; gx <= ccx + ring; gx += edgeRow ? 1 : 2 * ring || 1) {
+          if (gx < 0 || gx >= g.gw) continue;
+          for (const b of g.cells[gy * g.gw + gx]) {
+            if (!b.alive) continue;
+            if (b.x > view[0] && b.x < view[1] && b.y > view[2] && b.y < view[3]) continue;
+            found.push([(b.x - cx) ** 2 + (b.y - cy) ** 2, b]);
+          }
+        }
+      }
+      if (found.length >= count) {
+        found.sort((a, b) => a[0] - b[0]);
+        if (Math.sqrt(found[count - 1][0]) <= ring * g.cs) break;
+      }
+    }
+    found.sort((a, b) => a[0] - b[0]);
+    return found.slice(0, count).map((f) => f[1]);
+  }
+
   function newRun(state, fresh) {
     const perm = {};
     for (const p of PERKS) perm[p.id] = fresh ? 0 : perkLvl(p.id);
@@ -205,14 +260,14 @@
       for (const s of a.subs) up[a.id][s.id] = 0;
     }
     if (perm.headDash) up.dash.owned = true;
-    if (perm.headMagnet) up.magnet.owned = true;
     const c = CFG.world / 2;
     run = {
       state, fresh,
       prestigeAtStart: save.prestige,
       perm, up,
-      goo: perm.startGoo * 25,
-      blobs: makeBlobs(),
+      goo: Math.round(perm.startGoo * 25 * LS),
+      blobs: null,
+      grid: null,
       left: CFG.blobCount,
       eaten: 0,
       cells: [{ x: c, y: c, m: CFG.startMass, vx: 0, vy: 0, ix: 0, iy: 0 }],
@@ -231,6 +286,8 @@
       finaleAt: 0,
       submitted: false,
     };
+    run.blobs = makeBlobs();
+    run.grid = makeGrid(run.blobs);
     cam.x = c; cam.y = c;
     selected = 0;
   }
@@ -238,15 +295,13 @@
   function stats() {
     const u = run.up, p = run.perm;
     return {
-      speedMult: (1 + 0.06 * u.speed.lvl) * (1 + 0.05 * p.startSpeed),
+      speedMult: (1 + 0.06 * per(u.speed.lvl)) * (1 + 0.05 * p.startSpeed),
       accel: CFG.accel,
-      magnetRange: u.magnet.owned ? 40 + 20 * u.magnet.range : 0,
-      magnetPull: 90 + 40 * u.magnet.pull,
-      gooMult: (1 + 0.15 * u.gobble.goo) * (1 + 0.2 * p.gooMult),
-      massMult: 1 + 0.15 * u.gobble.mass,
-      comboWindow: (CFG.comboBase + 0.2 * u.gobble.combo) * 1000,
-      dashCd: 3500 * 0.88 ** u.dash.cooldown,
-      dashDist: 180 * (1 + 0.15 * u.dash.distance),
+      gooMult: (1 + 0.15 * per(u.gobble.goo)) * (1 + 0.2 * p.gooMult),
+      massMult: 1 + 0.15 * per(u.gobble.mass),
+      comboWindow: (CFG.comboBase + 0.2 * per(u.gobble.combo)) * 1000,
+      dashCd: 3500 * 0.88 ** per(u.dash.cooldown),
+      dashDist: 180 * (1 + 0.15 * per(u.dash.distance)),
       dashCharges: 1 + u.dash.charges,
     };
   }
@@ -330,13 +385,12 @@
     run.dash.n--;
     for (const c of run.cells) {
       const a = aimFor(c);
-      const v = st.dashDist * 8; // impulse decays at rate 8/s, so it travels dashDist
+      const v = st.dashDist * Math.sqrt(radius(c.m) / 18) * 8; // decays at 8/s, so it travels dashDist (scaled by size)
       c.ix += a.x * v;
       c.iy += a.y * v;
     }
     run.dashUntil = performance.now() + 320;
     sfx.dash();
-    for (const c of run.cells) burst(c.x, c.y, COLORS.accent, 6, 120);
     beginTimer();
   }
 
@@ -676,8 +730,8 @@
     const gain = b.g * st.gooMult * comboMult(run.combo);
     run.goo += gain;
     run.pops.push({ x: b.x, y: b.y, r: b.r, t: 0, gold: b.gold });
-    c.pulse = Math.min(1, (c.pulse || 0) + (b.gold ? 0.9 : 0.45));
-    burst(b.x, b.y, b.gold ? COLORS.gold : `hsl(${b.hue} 80% 65%)`, b.gold ? 12 : 5, b.gold ? 160 : 90);
+    c.pulse = Math.min(1, (c.pulse || 0) + (b.gold ? 0.5 : 0.2));
+    if (b.gold) burst(b.x, b.y, "rgba(245,197,66,0.7)", 4, 60);
     run.gooEarned += gain;
     run.floats.push({ x: b.x, y: b.y - b.r, t: 0, text: `+${Math.max(1, Math.round(gain))}`, gold: b.gold, big: b.gold });
     if (run.combo % 10 === 0) run.floats.push({ x: c.x, y: c.y - radius(c.m) - 12, t: 0, text: `${run.combo}× combo!`, gold: true, big: true });
@@ -745,7 +799,7 @@
 
     for (const c of cells) {
       const r = radius(c.m);
-      const top = CFG.baseSpeed * st.speedMult * Math.pow(18 / r, 0.22);
+      const top = CFG.baseSpeed * st.speedMult * Math.pow(r / 18, CFG.sizeSpeedExp);
       let tx = 0, ty = 0;
       if (steering && kd) { tx = kd.x * top; ty = kd.y * top; }
       else if (steering && pointer.active) {
@@ -799,19 +853,13 @@
       }
     }
 
-    for (const b of run.blobs) {
-      if (!b.alive) continue;
-      for (const c of cells) {
-        const r = radius(c.m) * (dashing ? 1.5 : 1);
+    for (const c of cells) {
+      const r = radius(c.m) * (dashing ? 1.5 : 1);
+      const reach = r + 10;
+      eachBlobIn(c.x - reach, c.y - reach, c.x + reach, c.y + reach, (b) => {
         const dx = c.x - b.x, dy = c.y - b.y;
-        const d = Math.hypot(dx, dy);
-        if (d < r + b.r * 0.5) { onEat(b, c, st, now); break; }
-        if (st.magnetRange && d < r + st.magnetRange) {
-          const step = Math.min(d, st.magnetPull * dt);
-          b.x += (dx / d) * step;
-          b.y += (dy / d) * step;
-        }
-      }
+        if (dx * dx + dy * dy < (r + b.r * 0.5) ** 2) onEat(b, c, st, now);
+      });
     }
 
     if (now - run.lastEat > st.comboWindow) run.combo = 0;
@@ -858,7 +906,7 @@
     for (const c of cells) spread = Math.max(spread, Math.hypot(c.x - cx, c.y - cy) + radius(c.m));
     const screen = Math.min(1, Math.max(W, H) / 1100 + 0.25);
     // close-up while small, pulling out quickly as you grow
-    const base = clamp(1.7 * Math.pow(18 / radius(tm), 0.55), 0.3, 1.7) * screen;
+    const base = clamp(1.7 * Math.pow(18 / radius(tm), 0.55), 0.05, 1.7) * screen;
     const fit = (Math.min(W, H) * 0.42) / Math.max(spread, 1);
     const target = run.state === "menu" ? 0.6 * screen : run.state === "done" ? Math.min(base, fit) * 0.6 : Math.min(base, fit);
     const k = Math.min(1, dt * 8);
@@ -880,7 +928,8 @@
     ctx.strokeStyle = COLORS.grid;
     ctx.lineWidth = 1 / z;
     ctx.beginPath();
-    const step = 50;
+    let step = 50;
+    while (step * z < 22) step *= 2; // keep grid lines readable when zoomed far out
     for (let x = Math.max(0, Math.floor(vx0 / step) * step); x <= Math.min(world, vx1); x += step) { ctx.moveTo(x, Math.max(0, vy0)); ctx.lineTo(x, Math.min(world, vy1)); }
     for (let y = Math.max(0, Math.floor(vy0 / step) * step); y <= Math.min(world, vy1); y += step) { ctx.moveTo(Math.max(0, vx0), y); ctx.lineTo(Math.min(world, vx1), y); }
     ctx.stroke();
@@ -889,12 +938,13 @@
     ctx.strokeRect(0, 0, world, world);
 
     const finalStretch = isPlaying() && run.left <= FINAL_STRETCH;
-    for (const b of run.blobs) {
-      if (!b.alive) continue;
-      if (b.x < vx0 - 20 || b.x > vx1 + 20 || b.y < vy0 - 20 || b.y > vy1 + 20) continue;
+    const minR = 1.3 / z; // keep far-away blobs visible as dots
+    eachBlobIn(vx0 - 20, vy0 - 20, vx1 + 20, vy1 + 20, (b) => {
+      const br = Math.max(b.r, minR);
       ctx.fillStyle = b.gold ? COLORS.gold : `hsl(${b.hue} 70% 60%)`;
+      if (br * z < 2.2 && !b.gold && !finalStretch) { ctx.fillRect(b.x - br, b.y - br, br * 2, br * 2); return; }
       ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.arc(b.x, b.y, br, 0, Math.PI * 2);
       ctx.fill();
       if (b.gold) {
         ctx.strokeStyle = "rgba(255,255,255,0.6)";
@@ -905,19 +955,19 @@
         ctx.strokeStyle = "rgba(245,197,66,0.85)";
         ctx.lineWidth = 2.5 / z;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r + (7 + 3 * Math.sin(now / 140)) / z, 0, Math.PI * 2);
+        ctx.arc(b.x, b.y, br + (7 + 3 * Math.sin(now / 140)) / z, 0, Math.PI * 2);
         ctx.stroke();
       }
-    }
+    });
 
     for (const p of run.pops) {
       p.t += dt;
       const a = 1 - p.t / 0.35;
       if (a <= 0) continue;
-      ctx.strokeStyle = p.gold ? `rgba(245,197,66,${a})` : `rgba(255,255,255,${a * 0.6})`;
-      ctx.lineWidth = 2 / z;
+      ctx.strokeStyle = p.gold ? `rgba(245,197,66,${a * 0.6})` : `rgba(255,255,255,${a * 0.25})`;
+      ctx.lineWidth = 1.2 / z;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r + p.t * 60, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, p.r + (p.t * 24) / z, 0, Math.PI * 2);
       ctx.stroke();
     }
     run.pops = run.pops.filter((p) => p.t < 0.35);
@@ -938,18 +988,6 @@
     ctx.globalAlpha = 1;
     run.parts = run.parts.filter((p) => p.t < p.life);
 
-    const st = stats();
-    if (st.magnetRange && run.state !== "menu") {
-      ctx.strokeStyle = "rgba(88,196,168,0.18)";
-      ctx.lineWidth = 1.5 / z;
-      ctx.setLineDash([6 / z, 6 / z]);
-      for (const c of run.cells) {
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, radius(c.m) + st.magnetRange, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.setLineDash([]);
-    }
 
     if (run.state !== "menu") {
       const dashing = now < run.dashUntil;
@@ -963,7 +1001,7 @@
         }
         // gulp: swell briefly after each bite
         c.pulse = (c.pulse || 0) * Math.exp(-9 * dt);
-        const rr = r * (1 + 0.14 * c.pulse);
+        const rr = r * (1 + 0.035 * c.pulse);
         ctx.fillStyle = COLORS.accent;
         ctx.strokeStyle = "rgba(0,0,0,0.25)";
         ctx.lineWidth = Math.max(3, rr * 0.08);
@@ -971,10 +1009,6 @@
         ctx.arc(c.x, c.y, rr, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = `rgba(255,255,255,${0.16 + 0.25 * c.pulse})`;
-        ctx.beginPath();
-        ctx.arc(c.x - rr * 0.3, c.y - rr * 0.32, rr * 0.38, 0, Math.PI * 2);
-        ctx.fill();
       }
       // aim indicator
       if (isPlaying()) {
@@ -1043,15 +1077,13 @@
   }
 
   function drawRadar(vx0, vx1, vy0, vy1, count) {
-    const near = [];
-    for (const b of run.blobs) {
-      if (!b.alive) continue;
-      if (b.x > vx0 && b.x < vx1 && b.y > vy0 && b.y < vy1) continue;
-      near.push([(b.x - cam.x) ** 2 + (b.y - cam.y) ** 2, b]);
+    const now = performance.now();
+    if (!run.radarAt || now - run.radarAt > 250 || run.radarList.some((b) => !b.alive)) {
+      run.radarAt = now;
+      run.radarList = nearestOutside(cam.x, cam.y, count, [vx0, vx1, vy0, vy1]);
     }
-    near.sort((a, b) => a[0] - b[0]);
     ctx.fillStyle = COLORS.gold;
-    for (const [, b] of near.slice(0, count)) {
+    for (const b of run.radarList) {
       const ang = Math.atan2(b.y - cam.y, b.x - cam.x);
       const margin = 34;
       const hx = W / 2 - margin, hy = H / 2 - margin;
@@ -1086,7 +1118,7 @@
   // debug only: keep simulating when the tab can't animate (hidden test browsers)
   if (DEBUG) setInterval(() => { const now = performance.now(); if (now - last > 100) tick(now); }, 16);
 
-  if (DEBUG) window.__blob = { get run() { return run; }, get save() { return save; }, stats: () => stats(), finish: () => { for (const b of run.blobs) b.alive = false; run.left = 0; } };
+  if (DEBUG) window.__blob = { get run() { return run; }, get save() { return save; }, stats: () => stats(), eachBlobIn: (...a) => eachBlobIn(...a), finish: () => { for (const b of run.blobs) b.alive = false; run.left = 0; } };
 
   openMenu(false);
   requestAnimationFrame(frame);
