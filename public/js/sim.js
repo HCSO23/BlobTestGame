@@ -53,7 +53,7 @@ for (const a of ABILITIES) for (const s of a.subs) PER[`${a.id}.${s.id}`] = s.pe
 export function stats(run) {
   const u = run.up, m = run.mods, cfg = run.cfg;
   return {
-    speedMult: (1 + PER["speed.lvl"] * u.speed.lvl) * m.speedMult,
+    speedMult: (1 + PER["speed.lvl"] * u.speed.lvl) * PER["speed.overdrive"] ** u.speed.overdrive * m.speedMult,
     gooMult: (1 + PER["gobble.goo"] * u.gobble.goo) * m.gooMult,
     massMult: 1 + PER["gobble.mass"] * u.gobble.mass,
     comboWindow: cfg.comboBase + PER["gobble.combo"] * u.gobble.combo + m.comboBonus,

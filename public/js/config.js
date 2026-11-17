@@ -53,7 +53,7 @@ export function makeConfig(debug = false) {
 }
 
 // ---------- in-run upgrades ----------
-// tiers: [cost, biome it's meant for]. Prices scale ~4x per biome to follow income (tuned with
+// tiers: [cost, biome it's meant for; 4 = Endgame, for late-game Goo income]. Prices scale ~4x per biome to follow income (tuned with
 // tools/balance.mjs). `per` is the effect per tier (cooldown multiplies).
 const pctFmt = (per, what) => (l) => `+${Math.round(l * per * 100)}% ${what}`;
 export const ABILITIES = [
@@ -61,24 +61,26 @@ export const ABILITIES = [
     subs: [
       { id: "lvl", name: "Top speed", per: 0.25, fmt: pctFmt(0.25, "speed"),
         tiers: [[30, 0], [120, 0], [2400, 1], [10000, 1], [190000, 2], [720000, 2], [12000000, 3], [38000000, 3]] },
+      { id: "overdrive", name: "Overdrive", per: 1.25, fmt: (l) => `×${(1.25 ** l).toFixed(2)} speed`,
+        tiers: [[8000000, 4], [18000000, 4], [40000000, 4], [90000000, 4], [200000000, 4]] },
     ] },
   { id: "gobble", icon: "✦", name: "Gobble", kind: "Passive", desc: "More Goo and mass from every bite, and longer combos.", unlock: 0,
     subs: [
       { id: "goo", name: "Goo per bite", per: 0.25, fmt: pctFmt(0.25, "Goo"),
-        tiers: [[25, 0], [100, 0], [2000, 1], [8800, 1], [160000, 2], [640000, 2], [10000000, 3], [35000000, 3]] },
+        tiers: [[25, 0], [100, 0], [2000, 1], [8800, 1], [160000, 2], [640000, 2], [10000000, 3], [35000000, 3], [12000000, 4], [25000000, 4], [50000000, 4]] },
       { id: "combo", name: "Combo window", per: 0.3, fmt: (l, base) => `${(base + l * 0.3).toFixed(1)}s to keep a combo`,
-        tiers: [[300, 0], [12000, 1], [480000, 2], [16000000, 3]] },
+        tiers: [[300, 0], [12000, 1], [480000, 2], [16000000, 3], [40000000, 4]] },
       { id: "mass", name: "Mass per bite", per: 0.2, fmt: pctFmt(0.2, "mass"),
-        tiers: [[200, 0], [8000, 1], [260000, 2], [1900000, 2], [32000000, 3]] },
+        tiers: [[200, 0], [8000, 1], [260000, 2], [1900000, 2], [32000000, 3], [15000000, 4], [35000000, 4], [70000000, 4]] },
     ] },
   { id: "dash", icon: "➤", name: "Dash", kind: "Active · Space", desc: "A quick burst in your aim direction that grows with your size. Wider pickup mid-dash; a gold blob mid-dash refunds the charge.", unlock: 80,
     subs: [
       { id: "cooldown", name: "Cooldown", per: 0.8, fmt: (l, base) => `${(base * 0.8 ** l).toFixed(2)}s recharge`,
-        tiers: [[150, 0], [4000, 1], [24000, 1], [560000, 2], [9000000, 3], [32000000, 3]] },
+        tiers: [[150, 0], [4000, 1], [24000, 1], [560000, 2], [9000000, 3], [32000000, 3], [12000000, 4], [28000000, 4], [60000000, 4]] },
       { id: "distance", name: "Distance", per: 0.2, fmt: pctFmt(0.2, "dash distance"),
-        tiers: [[150, 0], [4000, 1], [24000, 1], [560000, 2], [9000000, 3], [32000000, 3]] },
+        tiers: [[150, 0], [4000, 1], [24000, 1], [560000, 2], [9000000, 3], [32000000, 3], [12000000, 4], [28000000, 4], [60000000, 4]] },
       { id: "charges", name: "Charges", per: 1, fmt: (l) => `${1 + l} charge${l ? "s" : ""}`,
-        tiers: [[20000, 1], [800000, 2], [22000000, 3]] },
+        tiers: [[20000, 1], [800000, 2], [22000000, 3], [25000000, 4], [80000000, 4]] },
     ] },
 ];
 for (const a of ABILITIES) for (const s of a.subs) s.max = s.tiers.length;

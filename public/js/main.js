@@ -332,7 +332,9 @@ function updateShop() {
     [...r.pips.children].forEach((pip, i) => pip.classList.toggle("on", i < lvl));
     r.cost.textContent = maxed ? "Maxed" : `${fmtNum(subCost(cfg, r.s, lvl))} Goo`;
     r.cost.className = "cost num" + (maxed ? " max" : "");
-    r.btag.textContent = maxed ? "" : BIOMES[r.s.tiers[lvl][1]].name;
+    const tb = maxed ? -1 : r.s.tiers[lvl][1];
+    r.btag.textContent = tb < 0 ? "" : BIOMES[tb] ? BIOMES[tb].name : "Endgame";
+    r.btag.classList.toggle("end", tb >= BIOMES.length);
     r.btag.hidden = maxed;
     r.el.disabled = !playing || maxed || !canBuy(run, r.a, r.s);
   }
