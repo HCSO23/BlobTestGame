@@ -12,7 +12,7 @@
     --edge: #e05d5d;
     --text: #e8edf3;
     --muted: #8a96a6;
-    --panel: rgba(17, 21, 28, 0.82);
+    --panel: rgba(17, 21, 28, 0.84);
     --panel-solid: #161b24;
     --panel-border: rgba(255, 255, 255, 0.09);
     --accent: #58c4a8;
@@ -20,7 +20,8 @@
     --goo: #9be15d;
     --essence: #c79bff;
     --gold: #f5c542;
-    --danger: #e05d5d;
+    --good: #58d68d;
+    --bad: #e05d5d;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
@@ -31,56 +32,92 @@
   .panel { position: fixed; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 10px;
     backdrop-filter: blur(6px); }
   .num { font-variant-numeric: tabular-nums; }
+  kbd { font: 600 10px/1 system-ui, sans-serif; color: var(--muted); border: 1px solid var(--panel-border); border-bottom-width: 2px;
+    border-radius: 4px; padding: 2px 4px; background: rgba(255,255,255,0.04); }
 
   /* HUD */
-  #hud { top: 12px; left: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 170px; }
+  #hud { top: 12px; left: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 180px; }
   #timer { font-size: 28px; font-weight: 700; letter-spacing: .01em; }
+  #splitDelta { font-size: 13px; font-weight: 600; height: 17px; }
+  #splitDelta.good { color: var(--good); }
+  #splitDelta.bad { color: var(--bad); }
   #hud .row { display: flex; justify-content: space-between; gap: 14px; color: var(--muted); }
   #hud b { color: var(--text); font-weight: 600; }
   #hud .goo b { color: var(--goo); }
   #modeTag { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
   #modeTag.fresh { color: var(--gold); }
+  #combo { margin-top: 4px; }
+  #combo .row b { color: var(--gold); }
+  #comboBar { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.08); overflow: hidden; margin-top: 3px; }
+  #comboFill { height: 100%; width: 0; background: var(--gold); }
 
   /* ability bar */
   #abilities { left: 50%; bottom: 14px; transform: translateX(-50%); padding: 8px; display: flex; gap: 8px; }
-  .ability { position: relative; width: 74px; height: 58px; border-radius: 8px; border: 1px solid var(--panel-border);
+  .ability { position: relative; width: 78px; height: 60px; border-radius: 8px; border: 1px solid var(--panel-border);
     background: rgba(255,255,255,0.05); overflow: hidden; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 1px; padding: 0; }
+    justify-content: flex-end; gap: 1px; padding: 0 0 6px; }
   .ability .label { font-weight: 600; font-size: 13px; position: relative; }
   .ability .sub { font-size: 11px; color: var(--muted); position: relative; }
-  .ability .key { position: absolute; top: 3px; left: 5px; font-size: 10px; color: var(--muted); }
+  .ability kbd { position: absolute; top: 4px; left: 4px; }
   .ability .cd { position: absolute; left: 0; bottom: 0; width: 100%; background: rgba(88,196,168,0.28); height: 0; }
   .ability.ready { border-color: var(--accent); }
-  .ability[hidden], #shopToggle[hidden] { display: none; }
   #shopToggle { display: none; }
 
   /* shop */
-  #shop { top: 12px; right: 12px; bottom: 12px; width: 290px; padding: 12px; overflow-y: auto; touch-action: pan-y; }
-  #shop h2 { margin: 0 0 2px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  #shop .hint { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
-  .card { border: 1px solid var(--panel-border); border-radius: 8px; padding: 9px 10px; margin-bottom: 8px; background: rgba(255,255,255,0.03); }
-  .card.locked { opacity: .92; }
-  .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-  .card-head strong { font-size: 14px; }
-  .card-desc { color: var(--muted); font-size: 12px; margin: 2px 0 6px; }
+  #shop { top: 12px; right: 12px; width: 320px; max-height: calc(100vh - 24px); padding: 12px; overflow-y: auto; touch-action: pan-y; }
+  .shop-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .shop-head h2 { margin: 0; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .goo-pill { color: var(--goo); font-weight: 700; font-size: 16px; }
+  .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 10px; }
+  .tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px 6px;
+    border-radius: 8px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.04); }
+  .tile:hover { border-color: rgba(88,196,168,0.6); }
+  .tile.sel { border-color: var(--accent); background: rgba(88,196,168,0.12); }
+  .tile .ico { font-size: 18px; line-height: 1; height: 20px; }
+  .tile .tn { font-size: 11px; font-weight: 600; }
+  .tile .tl { font-size: 10px; color: var(--muted); }
+  .tile.locked .ico, .tile.locked .tn { opacity: .55; }
+  .tile kbd { position: absolute; top: 3px; left: 3px; padding: 1px 3px; font-size: 9px; }
+  .tile .dot { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--goo);
+    box-shadow: 0 0 6px var(--goo); display: none; }
+  .tile.can .dot { display: block; }
+  .detail { border: 1px solid var(--panel-border); border-radius: 10px; padding: 10px; background: rgba(255,255,255,0.03); }
+  .detail-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .detail-head strong { font-size: 15px; }
   .tag { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .detail-desc { color: var(--muted); font-size: 12px; margin: 3px 0 8px; }
+  .up { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; width: 100%; text-align: left;
+    padding: 7px 8px; border-radius: 7px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.05); margin-top: 6px; }
+  .up:hover:not(:disabled) { border-color: var(--accent); }
+  .up:disabled { cursor: default; }
+  .up:disabled .cost { opacity: .5; }
+  .up.unlock { background: rgba(88,196,168,0.12); border-color: rgba(88,196,168,0.45); }
+  .up .nm { font-size: 13px; font-weight: 600; }
+  .up .val { font-size: 11px; color: var(--muted); }
+  .up .val .next { color: var(--accent); }
+  .up .bar { display: flex; gap: 2px; margin-top: 3px; }
+  .up .bar i { width: 12px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.12); }
+  .up .bar i.on { background: var(--accent); }
+  .up .cost { font-weight: 700; white-space: nowrap; color: var(--goo); font-size: 13px; }
+  .up .cost.max { color: var(--muted); font-weight: 600; }
+  .up.flash { animation: flash .35s ease; }
+  @keyframes flash { from { background: rgba(155,225,93,0.35); } to { background: rgba(255,255,255,0.05); } }
+  .shop-hint { color: var(--muted); font-size: 11px; margin: 8px 0 0; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+  /* prestige shop (menu) */
   .buy { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; text-align: left;
     padding: 6px 8px; border-radius: 6px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.05); margin-top: 4px; }
   .buy:hover:not(:disabled) { border-color: var(--accent); }
   .buy:disabled { cursor: default; opacity: .45; }
-  .buy.unlock { background: rgba(88,196,168,0.14); border-color: rgba(88,196,168,0.4); }
   .buy .pips { color: var(--muted); font-size: 11px; letter-spacing: 1px; }
-  .buy .cost { font-weight: 600; white-space: nowrap; }
-  .buy .cost.goo { color: var(--goo); }
-  .buy .cost.essence { color: var(--essence); }
+  .buy .cost { font-weight: 600; white-space: nowrap; color: var(--essence); }
   .buy .name { font-size: 13px; }
   .buy .name small { display: block; color: var(--muted); font-size: 11px; }
 
   /* menu / results overlay */
   #overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px;
     background: rgba(8, 10, 14, 0.62); }
-  #overlay[hidden] { display: none; }
-  #menu { position: relative; width: min(860px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; padding: 20px 22px;
+  #menu { position: relative; width: min(880px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; padding: 20px 22px;
     background: var(--panel-solid); border: 1px solid var(--panel-border); border-radius: 14px; touch-action: pan-y; }
   #menu h1 { margin: 0; font-size: 30px; letter-spacing: -.01em; }
   #menu h1 span { color: var(--accent); }
@@ -89,7 +126,6 @@
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
   .stack { display: flex; flex-direction: column; gap: 14px; }
   #results { border: 1px solid var(--panel-border); border-radius: 10px; padding: 12px 14px; background: rgba(88,196,168,0.07); }
-  #results[hidden] { display: none; }
   #results .big { font-size: 34px; font-weight: 700; }
   #results .line { color: var(--muted); }
   #results .line b { color: var(--text); }
@@ -99,7 +135,7 @@
   #name { flex: 1; min-width: 0; background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid var(--panel-border);
     border-radius: 6px; padding: 7px 9px; font: inherit; outline: none; user-select: text; }
   #name:focus { border-color: var(--accent); }
-  .start { display: flex; gap: 8px; flex-wrap: wrap; }
+  .start { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .btn { padding: 10px 16px; border-radius: 8px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.06); font-weight: 600; }
   .btn:hover { border-color: var(--accent); }
   .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
@@ -122,18 +158,20 @@
   #lbEmpty { color: var(--muted); padding: 6px 0; }
   #submitMsg { font-size: 12px; color: var(--muted); }
   .how { color: var(--muted); font-size: 13px; margin: 0; padding-left: 18px; }
-  .how li { margin-bottom: 2px; }
+  .how li { margin-bottom: 3px; }
 
   @media (max-width: 760px) {
     .grid { grid-template-columns: 1fr; }
     #hud { padding: 8px 10px; min-width: 0; }
     #timer { font-size: 22px; }
-    #shop { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 58vh; border-radius: 14px 14px 0 0;
+    #shop { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 62vh; border-radius: 14px 14px 0 0;
       transform: translateY(100%); transition: transform .2s ease; }
     #shop.open { transform: none; }
     #shopToggle { display: flex; }
+    .shop-hint { display: none; }
     #abilities { bottom: 10px; }
-    .ability { width: 66px; height: 54px; }
+    .ability { width: 66px; height: 56px; }
+    .ability kbd { display: none; }
   }
 </style>
 </head>
@@ -143,21 +181,28 @@
 <div id="hud" class="panel" hidden>
   <div id="modeTag">Normal run</div>
   <div id="timer" class="num">0:00.0</div>
+  <div id="splitDelta" class="num"></div>
   <div class="row"><span>Blobs left</span><b id="left" class="num">0</b></div>
   <div class="row goo"><span>Goo</span><b id="goo" class="num">0</b></div>
   <div class="row"><span>Mass</span><b id="mass" class="num">0</b></div>
+  <div id="combo">
+    <div class="row"><span>Combo</span><b id="comboTxt" class="num">—</b></div>
+    <div id="comboBar"><div id="comboFill"></div></div>
+  </div>
 </div>
 
 <div id="abilities" class="panel" hidden>
-  <button class="ability" id="dashBtn" hidden><span class="cd"></span><span class="key">Space</span><span class="label">Dash</span><span class="sub num" id="dashSub"></span></button>
-  <button class="ability" id="splitBtn" hidden><span class="cd"></span><span class="key">E</span><span class="label">Split</span><span class="sub num" id="splitSub"></span></button>
-  <button class="ability" id="shopToggle"><span class="key">U</span><span class="label">Upgrades</span><span class="sub num" id="shopSub"></span></button>
+  <button class="ability" id="dashBtn" hidden><span class="cd"></span><kbd>Space</kbd><span class="label">Dash</span><span class="sub num" id="dashSub"></span></button>
+  <button class="ability" id="splitBtn" hidden><span class="cd"></span><kbd>E</kbd><span class="label">Split</span><span class="sub num" id="splitSub"></span></button>
+  <button class="ability" id="regroupBtn" hidden><kbd>Q</kbd><span class="label">Regroup</span><span class="sub">merge now</span></button>
+  <button class="ability" id="shopToggle"><kbd>U</kbd><span class="label">Upgrades</span><span class="sub num" id="shopSub"></span></button>
 </div>
 
 <aside id="shop" class="panel" hidden>
-  <h2>Upgrades</h2>
-  <p class="hint">Spend Goo. Upgrades reset every run.</p>
-  <div id="shopCards"></div>
+  <div class="shop-head"><h2>Upgrades</h2><span class="goo-pill num"><span id="shopGoo">0</span> Goo</span></div>
+  <div id="tiles" class="tiles"></div>
+  <div id="detail" class="detail"></div>
+  <p class="shop-hint"><kbd>1</kbd>–<kbd>5</kbd> pick ability <kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd> buy · resets every run</p>
 </aside>
 
 <div id="overlay">
@@ -170,6 +215,7 @@
           <div class="line" id="resMode">Run complete</div>
           <div class="big num" id="resTime">0:00.0</div>
           <div class="line" id="resPb"></div>
+          <div class="line">Best combo: <b id="resCombo">0</b></div>
           <div class="line">Essence earned: <b id="resEss" style="color:var(--essence)">0</b> <span class="small" id="resEssWhy"></span></div>
           <div class="start" style="margin-top:8px">
             <button class="btn" id="submitBtn">Submit to leaderboard</button>
@@ -205,12 +251,14 @@
         <div>
           <h3>How to play</h3>
           <ul class="how">
-            <li>Your blob follows the mouse (or your finger).</li>
-            <li>Eat blobs for mass and <b style="color:var(--goo)">Goo</b>. Gold blobs are worth more.</li>
-            <li>Spend Goo on upgrades from the side panel (<b>U</b> on mobile).</li>
-            <li><b>Space</b> dashes, <b>E</b> splits once you've bought them.</li>
-            <li><b>R</b> restarts instantly, <b>Esc</b> returns to this menu.</li>
-            <li>Clear the map to stop the clock and earn <b style="color:var(--essence)">Essence</b> for permanent upgrades.</li>
+            <li>Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys, or follow the mouse (or your finger). You have momentum, so plan your turns.</li>
+            <li>Eat every blob to stop the clock. <b style="color:var(--gold)">Gold</b> blobs are worth more.</li>
+            <li>Eat quickly to build a <b style="color:var(--gold)">combo</b>: up to ×4 Goo. It drops if you go too long without eating.</li>
+            <li>Buy upgrades without stopping: <kbd>1</kbd>–<kbd>5</kbd> picks an ability, <kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd> buys.</li>
+            <li><kbd>Space</kbd> dashes. Dashes grab blobs from farther away, and eating a gold blob mid-dash refunds the charge.</li>
+            <li><kbd>E</kbd> splits into pieces, <kbd>Q</kbd> regroups them early.</li>
+            <li>Your splits (every ⅙ of the map) are compared with your PB. <kbd>R</kbd> restarts, <kbd>Esc</kbd> opens this menu.</li>
+            <li>Clear the map to earn <b style="color:var(--essence)">Essence</b> for permanent upgrades.</li>
           </ul>
         </div>
       </div>

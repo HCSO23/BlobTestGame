@@ -8,38 +8,47 @@
     startMass: 20,
     parMs: DEBUG ? 30000 : 240000, // beat par for bonus Essence
     seed: 1337, // same map every run, so routes can be learned
-    baseSpeed: 230,
+    baseSpeed: 240,
+    accel: 9, // how quickly velocity catches up to input (higher = less drift)
     minSplitMass: 12,
+    splitCount: 6, // speedrun splits per run
+    comboBase: 1.1, // seconds between bites to keep a combo
+    comboCap: 40,
   };
   const SAVE_KEY = DEBUG ? "blobDevourSave_debug" : "blobDevourSave";
-  const COST_MULT = 1.5;
+  const COST_MULT = 1.55;
   const PERK_MULT = 1.6;
+  const BUY_KEYS = ["z", "x", "c"];
 
-  // In-run abilities. Each has an unlock price (0 = owned from the start) and sub-upgrades.
+  // In-run abilities. unlock 0 = owned from the start. Each sub-upgrade's level feeds stats().
   const ABILITIES = [
-    { id: "speed", name: "Speed", kind: "Passive", desc: "Move faster.", unlock: 0,
-      subs: [{ id: "lvl", name: "Speed", max: 5, base: 15, info: (l) => `+${l * 8}% speed` }] },
-    { id: "magnet", name: "Magnet", kind: "Passive", desc: "Pull nearby blobs toward you.", unlock: 30,
+    { id: "speed", icon: "»", name: "Speed", kind: "Passive", desc: "Higher top speed.", unlock: 0,
       subs: [
-        { id: "range", name: "Range", max: 5, base: 15, info: (l) => `${50 + 35 * l}px reach` },
-        { id: "pull", name: "Pull strength", max: 3, base: 20, info: (l) => `${90 + 70 * l}px/s pull` },
+        { id: "lvl", name: "Top speed", max: 5, base: 20, info: (l) => `+${l * 7}% speed` },
+        { id: "grip", name: "Grip", max: 3, base: 25, info: (l) => `${l ? "+" + l * 30 + "%" : "base"} turning` },
       ] },
-    { id: "gobble", name: "Gobble", kind: "Passive", desc: "Get more from every blob.", unlock: 0,
+    { id: "magnet", icon: "◎", name: "Magnet", kind: "Passive", desc: "Pull nearby blobs toward you.", unlock: 40,
       subs: [
-        { id: "goo", name: "Goo per blob", max: 5, base: 15, info: (l) => `+${l * 25}% Goo` },
-        { id: "mass", name: "Mass per blob", max: 4, base: 15, info: (l) => `+${l * 20}% mass` },
+        { id: "range", name: "Range", max: 5, base: 18, info: (l) => `${50 + 30 * l}px reach` },
+        { id: "pull", name: "Pull strength", max: 3, base: 25, info: (l) => `${90 + 60 * l}px/s pull` },
       ] },
-    { id: "dash", name: "Dash", kind: "Active · Space", desc: "Burst toward the cursor.", unlock: 50,
+    { id: "gobble", icon: "✦", name: "Gobble", kind: "Passive", desc: "More from every blob, longer combos.", unlock: 0,
       subs: [
-        { id: "cooldown", name: "Cooldown", max: 4, base: 20, info: (l) => `${(5 * 0.8 ** l).toFixed(1)}s recharge` },
-        { id: "distance", name: "Distance", max: 4, base: 20, info: (l) => `${Math.round(240 * (1 + 0.25 * l))}px dash` },
+        { id: "goo", name: "Goo per blob", max: 5, base: 20, info: (l) => `+${l * 20}% Goo` },
+        { id: "combo", name: "Combo window", max: 3, base: 30, info: (l) => `${(CFG.comboBase + 0.3 * l).toFixed(1)}s to keep combo` },
+        { id: "mass", name: "Mass per blob", max: 3, base: 20, info: (l) => `+${l * 20}% mass` },
+      ] },
+    { id: "dash", icon: "➤", name: "Dash", kind: "Active · Space", desc: "Burst in your aim direction. Wider pickup while dashing; a gold blob mid-dash refunds the charge.", unlock: 35,
+      subs: [
+        { id: "cooldown", name: "Cooldown", max: 4, base: 22, info: (l) => `${(3.5 * 0.78 ** l).toFixed(2)}s recharge` },
+        { id: "distance", name: "Distance", max: 4, base: 22, info: (l) => `${Math.round(320 * (1 + 0.25 * l))}px dash` },
         { id: "charges", name: "Charges", max: 2, base: 60, info: (l) => `${1 + l} charge${l ? "s" : ""}` },
       ] },
-    { id: "split", name: "Split", kind: "Active · E", desc: "Split into pieces that eat on their own.", unlock: 80,
+    { id: "split", icon: "✂", name: "Split", kind: "Active · E / Q", desc: "Split into pieces that eat on their own. Q regroups early.", unlock: 90,
       subs: [
-        { id: "pieces", name: "Pieces", max: 2, base: 100, info: (l) => `up to ${2 ** (1 + l)} pieces` },
-        { id: "launch", name: "Launch distance", max: 3, base: 20, info: (l) => `${Math.round(160 * (1 + 0.3 * l))}px launch` },
-        { id: "merge", name: "Merge time", max: 3, base: 20, info: (l) => `${(7 * (1 + 0.35 * l)).toFixed(1)}s apart` },
+        { id: "pieces", name: "Pieces", max: 2, base: 110, info: (l) => `up to ${2 ** (1 + l)} pieces` },
+        { id: "launch", name: "Launch distance", max: 3, base: 25, info: (l) => `${Math.round(180 * (1 + 0.3 * l))}px launch` },
+        { id: "merge", name: "Merge time", max: 3, base: 25, info: (l) => `${(7 * (1 + 0.35 * l)).toFixed(1)}s apart` },
       ] },
   ];
 
@@ -80,7 +89,7 @@
 
   // ================= save =================
   function defaultSave() {
-    return { name: "", essence: 0, prestige: 0, perks: {}, bestNormal: null, bestFresh: null };
+    return { name: "", essence: 0, prestige: 0, perks: {}, bestNormal: null, bestFresh: null, splitsNormal: null, splitsFresh: null };
   }
   function loadSave() {
     try {
@@ -150,40 +159,61 @@
       goo: perm.startGoo * 25,
       blobs: makeBlobs(),
       left: CFG.blobCount,
-      cells: [{ x: c, y: c, m: CFG.startMass, ix: 0, iy: 0 }],
+      eaten: 0,
+      cells: [{ x: c, y: c, m: CFG.startMass, vx: 0, vy: 0, ix: 0, iy: 0 }],
+      aim: { x: 1, y: 0 },
       startT: 0, endT: 0,
       dash: { n: 1, prog: 0 },
+      dashUntil: 0,
       mergeAt: 0,
+      combo: 0, lastEat: -1e9, maxCombo: 0,
+      splits: [],
+      deltaShowUntil: 0,
       pops: [],
       submitted: false,
     };
     cam.x = c; cam.y = c;
+    selected = 0;
   }
 
   function stats() {
     const u = run.up, p = run.perm;
     return {
-      speedMult: (1 + 0.08 * u.speed.lvl) * (1 + 0.05 * p.startSpeed),
-      magnetRange: u.magnet.owned ? 50 + 35 * u.magnet.range : 0,
-      magnetPull: 90 + 70 * u.magnet.pull,
-      gooMult: (1 + 0.25 * u.gobble.goo) * (1 + 0.2 * p.gooMult),
+      speedMult: (1 + 0.07 * u.speed.lvl) * (1 + 0.05 * p.startSpeed),
+      accel: CFG.accel * (1 + 0.3 * u.speed.grip),
+      magnetRange: u.magnet.owned ? 50 + 30 * u.magnet.range : 0,
+      magnetPull: 90 + 60 * u.magnet.pull,
+      gooMult: (1 + 0.2 * u.gobble.goo) * (1 + 0.2 * p.gooMult),
       massMult: 1 + 0.2 * u.gobble.mass,
-      dashCd: 5000 * 0.8 ** u.dash.cooldown,
-      dashDist: 240 * (1 + 0.25 * u.dash.distance),
+      comboWindow: (CFG.comboBase + 0.3 * u.gobble.combo) * 1000,
+      dashCd: 3500 * 0.78 ** u.dash.cooldown,
+      dashDist: 320 * (1 + 0.25 * u.dash.distance),
       dashCharges: 1 + u.dash.charges,
       maxPieces: 2 ** (1 + u.split.pieces),
-      splitLaunch: 160 * (1 + 0.3 * u.split.launch),
+      splitLaunch: 180 * (1 + 0.3 * u.split.launch),
       mergeMs: 7000 * (1 + 0.35 * u.split.merge),
     };
   }
+  const comboMult = (n) => 1 + 0.075 * (Math.min(n, CFG.comboCap) - 1); // x1 → ~x3.9 at 40
+  const splitEvery = () => Math.max(1, Math.floor(CFG.blobCount / CFG.splitCount));
 
   // ================= input =================
   const pointer = { x: 0, y: 0, active: false };
+  const keys = new Set();
   const setPointer = (x, y) => { pointer.x = x; pointer.y = y; pointer.active = true; };
   canvas.addEventListener("mousemove", (e) => setPointer(e.clientX, e.clientY));
   canvas.addEventListener("touchstart", (e) => { const t = e.touches[0]; setPointer(t.clientX, t.clientY); e.preventDefault(); }, { passive: false });
   canvas.addEventListener("touchmove", (e) => { const t = e.touches[0]; setPointer(t.clientX, t.clientY); e.preventDefault(); }, { passive: false });
   canvas.addEventListener("touchend", (e) => { if (!e.touches.length) pointer.active = false; });
+  window.addEventListener("blur", () => keys.clear());
+
+  const MOVE = { KeyW: [0, -1], ArrowUp: [0, -1], KeyS: [0, 1], ArrowDown: [0, 1], KeyA: [-1, 0], ArrowLeft: [-1, 0], KeyD: [1, 0], ArrowRight: [1, 0] };
+  function keyDir() {
+    let x = 0, y = 0;
+    for (const k of keys) if (MOVE[k]) { x += MOVE[k][0]; y += MOVE[k][1]; }
+    const d = Math.hypot(x, y);
+    return d ? { x: x / d, y: y / d } : null;
+  }
 
   function cursorWorld() {
     return { x: cam.x + (pointer.x - W / 2) / cam.zoom, y: cam.y + (pointer.y - H / 2) / cam.zoom };
@@ -194,55 +224,82 @@
       if (e.key === "Enter") startRun(false);
       return;
     }
+    if (MOVE[e.code]) {
+      keys.add(e.code);
+      e.preventDefault();
+      if (isPlaying()) pointer.active = false; // keyboard takes over steering until the mouse moves again
+      return;
+    }
+    if (e.repeat) return;
     const k = e.key.toLowerCase();
-    if (e.code === "Space") { e.preventDefault(); doDash(); }
+    if (e.code === "Space" || k === "shift") { e.preventDefault(); doDash(); }
     else if (k === "e") doSplit();
+    else if (k === "q") doRegroup();
     else if (k === "u") toggleShop();
+    else if (k >= "1" && k <= "5") selectAbility(Number(k) - 1);
+    else if (BUY_KEYS.includes(k)) buyRow(BUY_KEYS.indexOf(k));
     else if (k === "r" && run && run.state !== "menu") startRun(run.fresh);
     else if (k === "escape" && run && run.state !== "menu") openMenu();
   });
+  window.addEventListener("keyup", (e) => keys.delete(e.code));
   $("dashBtn").addEventListener("click", doDash);
   $("splitBtn").addEventListener("click", doSplit);
+  $("regroupBtn").addEventListener("click", doRegroup);
   $("shopToggle").addEventListener("click", toggleShop);
   function toggleShop() { $("shop").classList.toggle("open"); }
 
   // ================= abilities =================
   function isPlaying() { return run && (run.state === "ready" || run.state === "running"); }
 
+  // Direction an ability fires for a given piece: keyboard direction, else toward the cursor, else last heading.
+  function aimFor(c) {
+    const kd = keyDir();
+    if (kd) return kd;
+    if (pointer.active) {
+      const cw = cursorWorld();
+      const dx = cw.x - c.x, dy = cw.y - c.y;
+      const d = Math.hypot(dx, dy);
+      if (d > 4) return { x: dx / d, y: dy / d };
+    }
+    return run.aim;
+  }
+
   function doDash() {
     if (!isPlaying() || !run.up.dash.owned || run.dash.n < 1) return;
     const st = stats();
     run.dash.n--;
-    const cw = cursorWorld();
     for (const c of run.cells) {
-      const dx = cw.x - c.x, dy = cw.y - c.y;
-      const d = Math.hypot(dx, dy) || 1;
+      const a = aimFor(c);
       const v = st.dashDist * 8; // impulse decays at rate 8/s, so it travels dashDist
-      c.ix += (dx / d) * v;
-      c.iy += (dy / d) * v;
+      c.ix += a.x * v;
+      c.iy += a.y * v;
     }
+    run.dashUntil = performance.now() + 320;
     beginTimer();
   }
 
   function doSplit() {
     if (!isPlaying() || !run.up.split.owned) return;
     const st = stats();
-    const cw = cursorWorld();
     const before = run.cells.length;
     const snapshot = [...run.cells].sort((a, b) => b.m - a.m);
     for (const c of snapshot) {
       if (run.cells.length >= st.maxPieces) break;
       if (c.m < CFG.minSplitMass * 2) continue;
       c.m /= 2;
-      const dx = cw.x - c.x, dy = cw.y - c.y;
-      const d = Math.hypot(dx, dy) || 1;
+      const a = aimFor(c);
       const v = st.splitLaunch * 8;
-      run.cells.push({ x: c.x, y: c.y, m: c.m, ix: (dx / d) * v, iy: (dy / d) * v });
+      run.cells.push({ x: c.x, y: c.y, m: c.m, vx: c.vx, vy: c.vy, ix: a.x * v, iy: a.y * v });
     }
     if (run.cells.length > before) {
       run.mergeAt = performance.now() + st.mergeMs;
       beginTimer();
     }
+  }
+
+  function doRegroup() {
+    if (!isPlaying() || run.cells.length < 2) return;
+    run.mergeAt = performance.now();
   }
 
   function beginTimer() {
@@ -253,84 +310,134 @@
   }
 
   // ================= shop (in-run) =================
-  const shopRefs = []; // {btn, costEl, pipsEl, infoEl, ability, sub}
+  let selected = 0;
+  let detailKey = "";
+  const tileRefs = [];
+  let rowRefs = [];
+
   function buildShop() {
-    const root = $("shopCards");
+    const root = $("tiles");
     root.replaceChildren();
-    shopRefs.length = 0;
-    for (const a of ABILITIES) {
-      const card = document.createElement("div");
-      card.className = "card";
-      card.innerHTML = `<div class="card-head"><strong></strong><span class="tag"></span></div><div class="card-desc"></div>`;
-      card.querySelector("strong").textContent = a.name;
-      card.querySelector(".tag").textContent = a.kind;
-      card.querySelector(".card-desc").textContent = a.desc;
-      if (a.unlock > 0) {
-        const btn = makeBuyButton(`Unlock ${a.name}`, "", true);
-        btn.el.addEventListener("click", () => buy(a, null));
-        card.appendChild(btn.el);
-        shopRefs.push({ ...btn, ability: a, sub: null, card });
-      }
-      for (const s of a.subs) {
-        const btn = makeBuyButton(s.name, "", false);
-        btn.el.addEventListener("click", () => buy(a, s));
-        card.appendChild(btn.el);
-        shopRefs.push({ ...btn, ability: a, sub: s, card });
-      }
-      root.appendChild(card);
-    }
+    tileRefs.length = 0;
+    ABILITIES.forEach((a, i) => {
+      const t = document.createElement("button");
+      t.className = "tile";
+      t.innerHTML = `<kbd>${i + 1}</kbd><span class="dot"></span><span class="ico"></span><span class="tn"></span><span class="tl num"></span>`;
+      t.querySelector(".ico").textContent = a.icon;
+      t.querySelector(".tn").textContent = a.name;
+      t.addEventListener("click", () => selectAbility(i));
+      root.appendChild(t);
+      tileRefs.push({ el: t, lvl: t.querySelector(".tl"), ability: a });
+    });
+    detailKey = "";
     updateShop();
   }
 
-  function makeBuyButton(name, info, unlock) {
-    const el = document.createElement("button");
-    el.className = "buy" + (unlock ? " unlock" : "");
-    el.innerHTML = `<span class="name"><span class="n"></span><small></small></span><span><span class="pips"></span> <span class="cost goo"></span></span>`;
-    el.querySelector(".n").textContent = name;
-    return { el, infoEl: el.querySelector("small"), pipsEl: el.querySelector(".pips"), costEl: el.querySelector(".cost") };
+  function selectAbility(i) {
+    if (!run || i < 0 || i >= ABILITIES.length) return;
+    selected = i;
+    updateShop();
+  }
+
+  // Rows shown for the selected ability: [unlock] when locked, otherwise its sub-upgrades.
+  function rowsFor(a) {
+    return run.up[a.id].owned ? a.subs.map((s) => ({ a, s })) : [{ a, s: null }];
+  }
+
+  function canBuy(a, s) {
+    const st = run.up[a.id];
+    if (!s) return !st.owned && run.goo >= a.unlock;
+    const lvl = st[s.id];
+    return st.owned && lvl < s.max && run.goo >= subCost(s, lvl);
+  }
+
+  function buildDetail() {
+    const a = ABILITIES[selected];
+    const root = $("detail");
+    root.replaceChildren();
+    const head = document.createElement("div");
+    head.className = "detail-head";
+    head.innerHTML = `<strong></strong><span class="tag"></span>`;
+    head.querySelector("strong").textContent = `${a.icon} ${a.name}`;
+    head.querySelector(".tag").textContent = a.kind;
+    const desc = document.createElement("div");
+    desc.className = "detail-desc";
+    desc.textContent = a.desc;
+    root.append(head, desc);
+    rowRefs = rowsFor(a).map(({ s }, i) => {
+      const el = document.createElement("button");
+      el.className = "up" + (s ? "" : " unlock");
+      el.innerHTML = `<kbd>${BUY_KEYS[i].toUpperCase()}</kbd><span><div class="nm"></div><div class="val"></div><div class="bar"></div></span><span class="cost num"></span>`;
+      el.querySelector(".nm").textContent = s ? s.name : `Unlock ${a.name}`;
+      if (s) el.querySelector(".bar").innerHTML = "<i></i>".repeat(s.max);
+      el.addEventListener("click", () => buyRow(i));
+      root.appendChild(el);
+      return { el, s, a, val: el.querySelector(".val"), bar: el.querySelector(".bar"), cost: el.querySelector(".cost") };
+    });
   }
 
   function updateShop() {
-    if (!run) return;
-    for (const r of shopRefs) {
-      const st = run.up[r.ability.id];
-      if (!r.sub) {
-        r.el.hidden = st.owned;
-        r.costEl.textContent = `${r.ability.unlock} Goo`;
-        r.infoEl.textContent = "";
-        r.el.disabled = run.goo < r.ability.unlock || !isPlaying();
+    if (!run || !tileRefs.length) return;
+    const playing = isPlaying();
+    tileRefs.forEach((t, i) => {
+      const a = t.ability;
+      const st = run.up[a.id];
+      t.el.classList.toggle("sel", i === selected);
+      t.el.classList.toggle("locked", !st.owned);
+      if (!st.owned) t.lvl.textContent = `${a.unlock} Goo`;
+      else {
+        const lv = a.subs.reduce((s, x) => s + st[x.id], 0);
+        const mx = a.subs.reduce((s, x) => s + x.max, 0);
+        t.lvl.textContent = `${lv}/${mx}`;
+      }
+      t.el.classList.toggle("can", playing && rowsFor(a).some(({ s }) => canBuy(a, s)));
+    });
+    const a = ABILITIES[selected];
+    const key = `${selected}:${run.up[a.id].owned}`;
+    if (key !== detailKey) { detailKey = key; buildDetail(); }
+    for (const r of rowRefs) {
+      const st = run.up[r.a.id];
+      if (!r.s) {
+        r.val.textContent = "Unlocks this ability";
+        r.cost.textContent = `${r.a.unlock} Goo`;
+        r.cost.className = "cost num";
+        r.el.disabled = !playing || !canBuy(r.a, null);
         continue;
       }
-      r.el.hidden = !st.owned;
-      const lvl = st[r.sub.id];
-      const maxed = lvl >= r.sub.max;
-      const cost = subCost(r.sub, lvl);
-      r.infoEl.textContent = r.sub.info(lvl);
-      r.pipsEl.textContent = "●".repeat(lvl) + "○".repeat(r.sub.max - lvl);
-      r.costEl.textContent = maxed ? "MAX" : `${cost} Goo`;
-      r.el.disabled = maxed || run.goo < cost || !isPlaying();
+      const lvl = st[r.s.id];
+      const maxed = lvl >= r.s.max;
+      r.val.replaceChildren(document.createTextNode(r.s.info(lvl)));
+      if (!maxed) {
+        const nx = document.createElement("span");
+        nx.className = "next";
+        nx.textContent = ` → ${r.s.info(lvl + 1)}`;
+        r.val.appendChild(nx);
+      }
+      [...r.bar.children].forEach((pip, i) => pip.classList.toggle("on", i < lvl));
+      r.cost.textContent = maxed ? "MAX" : `${subCost(r.s, lvl)} Goo`;
+      r.cost.className = "cost num" + (maxed ? " max" : "");
+      r.el.disabled = !playing || maxed || !canBuy(r.a, r.s);
     }
+    $("shopGoo").textContent = Math.floor(run.goo);
     $("shopSub").textContent = `${Math.floor(run.goo)} Goo`;
   }
 
-  function buy(a, s) {
-    if (!isPlaying()) return;
+  function buyRow(i) {
+    if (!isPlaying() || !rowRefs[i]) return;
+    const { a, s, el } = rowRefs[i];
+    if (!canBuy(a, s)) return;
     const st = run.up[a.id];
     if (!s) {
-      if (st.owned || run.goo < a.unlock) return;
       run.goo -= a.unlock;
       st.owned = true;
     } else {
-      if (!st.owned) return;
-      const lvl = st[s.id];
-      if (lvl >= s.max) return;
-      const cost = subCost(s, lvl);
-      if (run.goo < cost) return;
-      run.goo -= cost;
-      st[s.id] = lvl + 1;
+      run.goo -= subCost(s, st[s.id]);
+      st[s.id]++;
       if (a.id === "dash" && s.id === "charges") run.dash.n = Math.min(run.dash.n + 1, stats().dashCharges);
     }
     updateShop();
+    const again = rowRefs[i];
+    if (again) { again.el.classList.remove("flash"); void again.el.offsetWidth; again.el.classList.add("flash"); }
   }
 
   // ================= menu / prestige =================
@@ -362,7 +469,7 @@
       const cost = perkCost(p, lvl);
       const el = document.createElement("button");
       el.className = "buy";
-      el.innerHTML = `<span class="name"><span class="n"></span><small></small></span><span><span class="pips"></span> <span class="cost essence"></span></span>`;
+      el.innerHTML = `<span class="name"><span class="n"></span><small></small></span><span><span class="pips"></span> <span class="cost"></span></span>`;
       el.querySelector(".n").textContent = p.name;
       el.querySelector("small").textContent = p.info(Math.max(lvl, 1)) + (lvl ? "" : " (not owned)");
       el.querySelector(".pips").textContent = p.max > 1 ? "●".repeat(lvl) + "○".repeat(p.max - lvl) : "";
@@ -399,8 +506,11 @@
     $("shop").hidden = false;
     $("modeTag").textContent = fresh ? "Fresh run · no prestige" : `Normal run · prestige ${save.prestige}`;
     $("modeTag").className = fresh ? "fresh" : "";
+    $("splitDelta").textContent = "";
     buildShop();
     pointer.active = false;
+    keys.clear();
+    document.activeElement && document.activeElement.blur && document.activeElement.blur();
   }
 
   function finishRun() {
@@ -408,6 +518,7 @@
     run.endT = performance.now();
     const t = run.endT - run.startT;
     const key = run.fresh ? "bestFresh" : "bestNormal";
+    const splitKey = run.fresh ? "splitsFresh" : "splitsNormal";
     const prev = save[key];
     const isPb = prev == null || t < prev;
     const parBonus = Math.max(0, Math.floor((CFG.parMs - t) / 10000));
@@ -415,21 +526,22 @@
     const ess = 5 + parBonus + pbBonus;
     save.essence += ess;
     save.prestige += 1;
-    if (isPb) save[key] = t;
+    if (isPb) { save[key] = t; save[splitKey] = run.splits.slice(); }
     persist();
     run.timeMs = t;
 
     $("resMode").textContent = run.fresh ? "Fresh run complete" : "Run complete";
     $("resTime").textContent = fmtTime(t);
-    $("resPb").innerHTML = "";
+    $("resPb").replaceChildren();
     if (isPb) {
       const span = document.createElement("span");
       span.className = "pb";
       span.textContent = prev == null ? "First clear!" : `New personal best! (was ${fmtTime(prev)})`;
       $("resPb").appendChild(span);
     } else {
-      $("resPb").textContent = `Personal best: ${fmtTime(prev)}`;
+      $("resPb").textContent = `Personal best: ${fmtTime(prev)} (+${((t - prev) / 1000).toFixed(1)}s)`;
     }
+    $("resCombo").textContent = run.maxCombo;
     $("resEss").textContent = `+${ess}`;
     const why = ["5 base"];
     if (parBonus) why.push(`${parBonus} under par`);
@@ -454,9 +566,10 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "failed");
       run.submitted = true;
-      const rank = run.fresh || run.prestigeAtStart === 0 ? data.freshRank : data.rank;
-      $("submitMsg").textContent = rank ? `Submitted! You're #${rank}${run.fresh || run.prestigeAtStart === 0 ? " on Fresh" : ""}.` : "Submitted (not in the top 100).";
-      lbBoard = run.fresh ? "fresh" : "all";
+      const onFresh = run.fresh || run.prestigeAtStart === 0;
+      const rank = onFresh ? data.freshRank : data.rank;
+      $("submitMsg").textContent = rank ? `Submitted! You're #${rank}${onFresh ? " on Fresh" : ""}.` : "Submitted (not in the top 100).";
+      lbBoard = onFresh ? "fresh" : "all";
       fetchLeaderboard();
     } catch (err) {
       $("submitBtn").disabled = false;
@@ -493,55 +606,97 @@
   }
 
   // ================= simulation =================
+  function onEat(b, c, st, now) {
+    b.alive = false;
+    run.left--;
+    run.eaten++;
+    run.combo = now - run.lastEat <= st.comboWindow ? run.combo + 1 : 1;
+    run.lastEat = now;
+    run.maxCombo = Math.max(run.maxCombo, run.combo);
+    c.m += b.m * st.massMult;
+    run.goo += b.g * st.gooMult * comboMult(run.combo);
+    run.pops.push({ x: b.x, y: b.y, r: b.r, t: 0, gold: b.gold });
+    // dash tech: gold blob eaten mid-dash refunds the charge
+    if (b.gold && now < run.dashUntil && run.dash.n < st.dashCharges) {
+      run.dash.n++;
+      run.pops.push({ x: c.x, y: c.y, r: radius(c.m), t: 0, gold: true });
+    }
+    // speedrun splits
+    if (run.eaten % splitEvery() === 0 && run.splits.length < CFG.splitCount) {
+      const t = now - run.startT;
+      run.splits.push(t);
+      const pb = (run.fresh ? save.splitsFresh : save.splitsNormal) || [];
+      const ref = pb[run.splits.length - 1];
+      const el = $("splitDelta");
+      if (ref != null) {
+        const d = (t - ref) / 1000;
+        el.textContent = `Split ${run.splits.length}: ${d <= 0 ? "−" : "+"}${Math.abs(d).toFixed(1)}s`;
+        el.className = "num " + (d <= 0 ? "good" : "bad");
+      } else {
+        el.textContent = `Split ${run.splits.length}: ${fmtTime(t)}`;
+        el.className = "num";
+      }
+      run.deltaShowUntil = now + 4000;
+    }
+  }
+
   function update(dt, now) {
     if (!run || run.state === "menu") return;
     const st = stats();
     const playing = isPlaying();
 
-    // dash recharge
     if (run.up.dash.owned && run.dash.n < st.dashCharges) {
       run.dash.prog += (dt * 1000) / st.dashCd;
       if (run.dash.prog >= 1) { run.dash.n++; run.dash.prog = 0; }
     }
-
     if (!playing) return;
-    if (pointer.active && run.state === "ready") {
-      const d = Math.hypot(pointer.x - W / 2, pointer.y - H / 2);
-      if (d > 20) beginTimer();
-    }
 
+    const kd = keyDir();
+    if (run.state === "ready") {
+      if (kd) beginTimer();
+      else if (pointer.active && Math.hypot(pointer.x - W / 2, pointer.y - H / 2) > 20) beginTimer();
+    }
+    const steering = run.state === "running";
     const cw = cursorWorld();
     const cells = run.cells;
     const merging = cells.length > 1 && now >= run.mergeAt;
+    const dashing = now < run.dashUntil;
     let cx = 0, cy = 0, tm = 0;
     for (const c of cells) { cx += c.x * c.m; cy += c.y * c.m; tm += c.m; }
     cx /= tm; cy /= tm;
+    const follow = 1 - Math.exp(-st.accel * dt);
 
     for (const c of cells) {
       const r = radius(c.m);
-      let vx = 0, vy = 0;
-      if (pointer.active && run.state === "running") {
+      const top = CFG.baseSpeed * st.speedMult * Math.pow(18 / r, 0.32);
+      let tx = 0, ty = 0;
+      if (steering && kd) { tx = kd.x * top; ty = kd.y * top; }
+      else if (steering && pointer.active) {
         const dx = cw.x - c.x, dy = cw.y - c.y;
         const d = Math.hypot(dx, dy);
-        if (d > 2) {
-          const sp = Math.min(CFG.baseSpeed * st.speedMult * Math.pow(18 / r, 0.32), d / dt);
-          vx = (dx / d) * sp; vy = (dy / d) * sp;
-        }
+        if (d > 3) { const sp = Math.min(top, d * 5); tx = (dx / d) * sp; ty = (dy / d) * sp; }
       }
       if (merging) {
         const dx = cx - c.x, dy = cy - c.y;
         const d = Math.hypot(dx, dy);
-        if (d > 1) { vx += (dx / d) * 160; vy += (dy / d) * 160; }
+        if (d > 1) { tx += (dx / d) * 170; ty += (dy / d) * 170; }
       }
-      c.x += (vx + c.ix) * dt;
-      c.y += (vy + c.iy) * dt;
+      c.vx += (tx - c.vx) * follow;
+      c.vy += (ty - c.vy) * follow;
+      c.x += (c.vx + c.ix) * dt;
+      c.y += (c.vy + c.iy) * dt;
       const decay = Math.exp(-8 * dt);
       c.ix *= decay; c.iy *= decay;
-      c.x = clamp(c.x, r * 0.5, CFG.world - r * 0.5);
-      c.y = clamp(c.y, r * 0.5, CFG.world - r * 0.5);
+      const nx = clamp(c.x, r * 0.5, CFG.world - r * 0.5), ny = clamp(c.y, r * 0.5, CFG.world - r * 0.5);
+      if (nx !== c.x) { c.vx = 0; c.ix = 0; }
+      if (ny !== c.y) { c.vy = 0; c.iy = 0; }
+      c.x = nx; c.y = ny;
     }
+    // remember heading for aiming when there is no input
+    const lead = cells[0];
+    const sp = Math.hypot(lead.vx, lead.vy);
+    if (sp > 20) run.aim = { x: lead.vx / sp, y: lead.vy / sp };
 
-    // pieces push apart until merge time, then combine
     for (let i = 0; i < cells.length; i++) {
       for (let j = i + 1; j < cells.length; j++) {
         const a = cells[i], b = cells[j];
@@ -553,6 +708,8 @@
             const m = a.m + b.m;
             a.x = (a.x * a.m + b.x * b.m) / m;
             a.y = (a.y * a.m + b.y * b.m) / m;
+            a.vx = (a.vx * a.m + b.vx * b.m) / m;
+            a.vy = (a.vy * a.m + b.vy * b.m) / m;
             a.m = m;
             cells.splice(j, 1);
             j--;
@@ -565,21 +722,13 @@
       }
     }
 
-    // magnet + eating
     for (const b of run.blobs) {
       if (!b.alive) continue;
       for (const c of cells) {
-        const r = radius(c.m);
+        const r = radius(c.m) * (dashing ? 1.5 : 1);
         const dx = c.x - b.x, dy = c.y - b.y;
         const d = Math.hypot(dx, dy);
-        if (d < r + b.r * 0.5) {
-          b.alive = false;
-          run.left--;
-          c.m += b.m * st.massMult;
-          run.goo += b.g * st.gooMult;
-          run.pops.push({ x: b.x, y: b.y, r: b.r, t: 0, gold: b.gold });
-          break;
-        }
+        if (d < r + b.r * 0.5) { onEat(b, c, st, now); break; }
         if (st.magnetRange && d < r + st.magnetRange) {
           const step = Math.min(d, st.magnetPull * dt);
           b.x += (dx / d) * step;
@@ -588,6 +737,7 @@
       }
     }
 
+    if (now - run.lastEat > st.comboWindow) run.combo = 0;
     if (run.left <= 0) finishRun();
   }
 
@@ -595,13 +745,21 @@
   let lastShopUpdate = 0;
   function updateHud(now) {
     if (!isPlaying() && run.state !== "done") return;
+    const st = stats();
     const t = run.state === "running" ? now - run.startT : run.state === "done" ? run.endT - run.startT : 0;
     $("timer").textContent = fmtTime(t);
     $("left").textContent = run.left;
     $("goo").textContent = Math.floor(run.goo);
     $("mass").textContent = Math.round(run.cells.reduce((s, c) => s + c.m, 0));
+    if (run.combo > 0) {
+      $("comboTxt").textContent = `${run.combo} · ×${comboMult(run.combo).toFixed(2)}`;
+      $("comboFill").style.width = `${clamp(1 - (now - run.lastEat) / st.comboWindow, 0, 1) * 100}%`;
+    } else {
+      $("comboTxt").textContent = "—";
+      $("comboFill").style.width = "0%";
+    }
+    if (run.deltaShowUntil && now > run.deltaShowUntil) { $("splitDelta").textContent = ""; run.deltaShowUntil = 0; }
 
-    const st = stats();
     const dashBtn = $("dashBtn");
     dashBtn.hidden = !run.up.dash.owned;
     if (run.up.dash.owned) {
@@ -612,6 +770,7 @@
     }
     const splitBtn = $("splitBtn");
     splitBtn.hidden = !run.up.split.owned;
+    $("regroupBtn").hidden = !(run.up.split.owned && run.cells.length > 1 && now < run.mergeAt);
     if (run.up.split.owned) {
       const apart = run.cells.length > 1 && now < run.mergeAt;
       $("splitSub").textContent = apart ? `${run.cells.length}/${st.maxPieces} · ${((run.mergeAt - now) / 1000).toFixed(1)}s` : `${run.cells.length}/${st.maxPieces}`;
@@ -619,7 +778,7 @@
       splitBtn.classList.toggle("ready", canSplit);
       splitBtn.querySelector(".cd").style.height = apart ? `${((run.mergeAt - now) / st.mergeMs) * 100}%` : "0%";
     }
-    if (now - lastShopUpdate > 150) { updateShop(); lastShopUpdate = now; }
+    if (now - lastShopUpdate > 120) { updateShop(); lastShopUpdate = now; }
   }
 
   function updateCamera(dt) {
@@ -649,7 +808,6 @@
     const vy0 = cam.y - H / 2 / z, vy1 = cam.y + H / 2 / z;
     const world = CFG.world;
 
-    // grid
     ctx.strokeStyle = COLORS.grid;
     ctx.lineWidth = 1 / z;
     ctx.beginPath();
@@ -661,7 +819,6 @@
     ctx.lineWidth = 4 / z;
     ctx.strokeRect(0, 0, world, world);
 
-    // blobs
     for (const b of run.blobs) {
       if (!b.alive) continue;
       if (b.x < vx0 - 20 || b.x > vx1 + 20 || b.y < vy0 - 20 || b.y > vy1 + 20) continue;
@@ -676,7 +833,6 @@
       }
     }
 
-    // eat pops
     for (const p of run.pops) {
       p.t += dt;
       const a = 1 - p.t / 0.35;
@@ -689,7 +845,6 @@
     }
     run.pops = run.pops.filter((p) => p.t < 0.35);
 
-    // magnet range
     const st = stats();
     if (st.magnetRange && run.state !== "menu") {
       ctx.strokeStyle = "rgba(88,196,168,0.18)";
@@ -703,10 +858,16 @@
       ctx.setLineDash([]);
     }
 
-    // player
     if (run.state !== "menu") {
+      const dashing = now < run.dashUntil;
       for (const c of run.cells) {
         const r = radius(c.m);
+        if (dashing) {
+          ctx.fillStyle = "rgba(88,196,168,0.16)";
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, r * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
         ctx.fillStyle = COLORS.accent;
         ctx.strokeStyle = "rgba(0,0,0,0.25)";
         ctx.lineWidth = Math.max(3, r * 0.08);
@@ -715,9 +876,20 @@
         ctx.fill();
         ctx.stroke();
       }
+      // aim indicator
+      if (isPlaying()) {
+        const c = run.cells[0];
+        const a = aimFor(c);
+        const r = radius(c.m);
+        ctx.strokeStyle = "rgba(255,255,255,0.5)";
+        ctx.lineWidth = 2 / z;
+        ctx.beginPath();
+        ctx.moveTo(c.x + a.x * (r + 6 / z), c.y + a.y * (r + 6 / z));
+        ctx.lineTo(c.x + a.x * (r + 16 / z), c.y + a.y * (r + 16 / z));
+        ctx.stroke();
+      }
     }
 
-    // radar arrows (screen space)
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     if (run.perm.radar && isPlaying()) drawRadar(vx0, vx1, vy0, vy1);
   }
@@ -727,8 +899,7 @@
     for (const b of run.blobs) {
       if (!b.alive) continue;
       if (b.x > vx0 && b.x < vx1 && b.y > vy0 && b.y < vy1) continue;
-      const d = (b.x - cam.x) ** 2 + (b.y - cam.y) ** 2;
-      near.push([d, b]);
+      near.push([(b.x - cam.x) ** 2 + (b.y - cam.y) ** 2, b]);
     }
     near.sort((a, b) => a[0] - b[0]);
     ctx.fillStyle = COLORS.gold;
@@ -737,9 +908,8 @@
       const margin = 34;
       const hx = W / 2 - margin, hy = H / 2 - margin;
       const t = Math.min(hx / Math.abs(Math.cos(ang) || 1e-6), hy / Math.abs(Math.sin(ang) || 1e-6));
-      const x = W / 2 + Math.cos(ang) * t, y = H / 2 + Math.sin(ang) * t;
       ctx.save();
-      ctx.translate(x, y);
+      ctx.translate(W / 2 + Math.cos(ang) * t, H / 2 + Math.sin(ang) * t);
       ctx.rotate(ang);
       ctx.globalAlpha = 0.85;
       ctx.beginPath();
@@ -752,17 +922,21 @@
 
   // ================= loop =================
   let last = performance.now();
-  function frame(now) {
+  function tick(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     update(dt, now);
     updateCamera(dt);
     draw(now, dt);
     updateHud(now);
+  }
+  function frame(now) {
+    tick(now);
     requestAnimationFrame(frame);
   }
+  // debug only: keep simulating when the tab can't animate (hidden test browsers)
+  if (DEBUG) setInterval(() => { const now = performance.now(); if (now - last > 100) tick(now); }, 16);
 
-  // debug hooks for testing
   if (DEBUG) window.__blob = { get run() { return run; }, get save() { return save; }, stats: () => stats(), finish: () => { for (const b of run.blobs) b.alive = false; run.left = 0; } };
 
   openMenu(false);
