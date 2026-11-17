@@ -2,14 +2,14 @@
 
 An incremental speedrun game: eat every blob on the map as fast as you can.
 
-- **Goal:** the 20,500×20,500 map has 25,000 small blobs that don't move. Eat them all to stop the clock. The map is the same every run, so you can learn a route.
-- **Goo:** eating gives mass and Goo. Spend Goo mid-run on abilities and their sub-upgrades:
+- **Goal:** the 102,500×102,500 map has 250,000 small blobs that don't move, gathered in clusters. Eat them all to stop the clock. The map is the same every run, so you can learn a route.
+- **Goo:** eating gives mass and Goo. Spend Goo mid-run (open the panel with U) on a few big upgrade tiers:
   - Speed
   - Gobble
   - Dash (Space)
 
   These reset every run.
-- **Prestige:** finishing a run earns Essence, which you spend on permanent perks like a Goo multiplier, head-start abilities or the blob radar.
+- **Prestige:** finishing a run earns Essence, which you spend on permanent perks like a Goo multiplier, a progress tracker, a mini-map or the blob radar.
 - **Fresh runs:** ignore all prestige perks and count for the Fresh leaderboard.
 - **Controls:** R restarts instantly. Esc goes back to the menu.
 
