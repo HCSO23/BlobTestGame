@@ -66,6 +66,12 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const subCost = (sub, lvl) => sub.base + sub.step * lvl;
   const perkCost = (perk, lvl) => Math.round(perk.base * PERK_MULT ** lvl);
+  function fmtNum(n) {
+    n = Math.floor(n);
+    if (n < 10000) return n.toLocaleString("en-US");
+    if (n < 1e6) return `${(n / 1000).toFixed(n < 1e5 ? 1 : 0)}k`;
+    return `${(n / 1e6).toFixed(2)}M`;
+  }
   function fmtTime(ms) {
     if (ms == null) return "—";
     const t = Math.max(0, ms) / 1000;
@@ -358,10 +364,10 @@
   function toggleMute() {
     save.muted = !save.muted;
     persist();
-    $("muteBtn").textContent = save.muted ? "Sound off" : "Sound on";
+    $("muteBtn").classList.toggle("muted", !!save.muted);
   }
   $("muteBtn").addEventListener("click", toggleMute);
-  $("muteBtn").textContent = save.muted ? "Sound off" : "Sound on";
+  $("muteBtn").classList.toggle("muted", !!save.muted);
 
   // ================= abilities =================
   function isPlaying() { return run && (run.state === "ready" || run.state === "running"); }
@@ -459,12 +465,12 @@
     rowRefs = rowsFor(a).map(({ s }, i) => {
       const el = document.createElement("button");
       el.className = "up" + (s ? "" : " unlock");
-      el.innerHTML = `<kbd>${BUY_KEYS[i].toUpperCase()}</kbd><span><div class="nm"></div><div class="val"></div><div class="bar"></div></span><span class="cost num"></span>`;
-      el.querySelector(".nm").textContent = s ? s.name : `Unlock ${a.name}`;
-      if (s) el.querySelector(".bar").innerHTML = "<i></i>".repeat(s.max);
+      el.innerHTML = `<div class="main"><div class="nm"><kbd>${BUY_KEYS[i].toUpperCase()}</kbd><span></span></div><div class="val"></div></div><span class="cost num"></span>` +
+        (s ? `<div class="barwrap"><div class="bar"><i></i></div><span class="lvl num"></span></div>` : "");
+      el.querySelector(".nm span").textContent = s ? s.name : `Unlock ${a.name}`;
       el.addEventListener("click", () => buyRow(i));
       root.appendChild(el);
-      return { el, s, a, val: el.querySelector(".val"), bar: el.querySelector(".bar"), cost: el.querySelector(".cost") };
+      return { el, s, a, val: el.querySelector(".val"), fill: el.querySelector(".bar i"), lvl: el.querySelector(".lvl"), cost: el.querySelector(".cost") };
     });
   }
 
@@ -476,7 +482,7 @@
       const st = run.up[a.id];
       t.el.classList.toggle("sel", i === selected);
       t.el.classList.toggle("locked", !st.owned);
-      if (!st.owned) t.lvl.textContent = `${a.unlock} Goo`;
+      if (!st.owned) t.lvl.textContent = `${fmtNum(a.unlock)} Goo`;
       else {
         const lv = a.subs.reduce((s, x) => s + st[x.id], 0);
         const mx = a.subs.reduce((s, x) => s + x.max, 0);
@@ -491,7 +497,7 @@
       const st = run.up[r.a.id];
       if (!r.s) {
         r.val.textContent = "Unlocks this ability";
-        r.cost.textContent = `${r.a.unlock} Goo`;
+        r.cost.textContent = `${fmtNum(r.a.unlock)} Goo`;
         r.cost.className = "cost num";
         r.el.disabled = !playing || !canBuy(r.a, null);
         continue;
@@ -505,13 +511,14 @@
         nx.textContent = ` → ${r.s.info(lvl + 1)}`;
         r.val.appendChild(nx);
       }
-      [...r.bar.children].forEach((pip, i) => pip.classList.toggle("on", i < lvl));
-      r.cost.textContent = maxed ? "MAX" : `${subCost(r.s, lvl)} Goo`;
+      r.fill.style.width = `${(lvl / r.s.max) * 100}%`;
+      r.lvl.textContent = `${lvl} / ${r.s.max}`;
+      r.cost.textContent = maxed ? "Maxed" : `${fmtNum(subCost(r.s, lvl))} Goo`;
       r.cost.className = "cost num" + (maxed ? " max" : "");
       r.el.disabled = !playing || maxed || !canBuy(r.a, r.s);
     }
-    $("shopGoo").textContent = Math.floor(run.goo);
-    $("shopSub").textContent = `${Math.floor(run.goo)} Goo`;
+    $("shopGoo").textContent = fmtNum(run.goo);
+    $("shopSub").textContent = `${fmtNum(run.goo)} Goo`;
   }
 
   function buyRow(i) {
@@ -562,11 +569,11 @@
       const cost = perkCost(p, lvl);
       const el = document.createElement("button");
       el.className = "buy";
-      el.innerHTML = `<span class="name"><span class="n"></span><small></small></span><span><span class="pips"></span> <span class="cost"></span></span>`;
+      el.innerHTML = `<span class="name"><span class="n"></span><small></small></span><span class="right"><span class="pips num"></span><span class="cost num"></span></span>`;
       el.querySelector(".n").textContent = p.name;
-      el.querySelector("small").textContent = p.info(Math.max(lvl, 1)) + (lvl ? "" : " (not owned)");
-      el.querySelector(".pips").textContent = p.max > 1 ? "●".repeat(lvl) + "○".repeat(p.max - lvl) : "";
-      el.querySelector(".cost").textContent = maxed ? (p.max === 1 ? "OWNED" : "MAX") : `${cost} Ess`;
+      el.querySelector("small").textContent = lvl ? p.info(lvl) : p.info(1);
+      el.querySelector(".pips").textContent = p.max > 1 ? `${lvl}/${p.max}` : lvl ? "" : "";
+      el.querySelector(".cost").textContent = maxed ? (p.max === 1 ? "Owned" : "Maxed") : `${cost} Ess`;
       el.disabled = maxed || save.essence < cost;
       el.addEventListener("click", () => {
         const l = perkLvl(p.id);
@@ -597,8 +604,8 @@
     $("hud").hidden = false;
     $("abilities").hidden = false;
     $("shop").hidden = false;
-    $("modeTag").textContent = fresh ? "Fresh run · no prestige" : `Normal run · prestige ${save.prestige}`;
-    $("modeTag").className = fresh ? "fresh" : "";
+    $("modeTag").textContent = fresh ? "Fresh run · no perks" : `Run · prestige ${save.prestige}`;
+    $("modeTag").className = "label" + (fresh ? " fresh" : "");
     $("splitDelta").textContent = "";
     buildShop();
     cam.zoom = 4; // start right up close, then pull out
@@ -640,7 +647,7 @@
       $("resPb").textContent = `Personal best: ${fmtTime(prev)} (+${((t - prev) / 1000).toFixed(1)}s)`;
     }
     $("resCombo").textContent = run.maxCombo;
-    $("resGoo").textContent = Math.round(run.gooEarned).toLocaleString();
+    $("resGoo").textContent = fmtNum(run.gooEarned);
     let lv = 0, mx = 0;
     for (const a of ABILITIES) for (const sub of a.subs) { mx += sub.max; if (run.up[a.id].owned) lv += run.up[a.id][sub.id]; }
     $("resUps").textContent = `${lv}/${mx}`;
@@ -875,10 +882,10 @@
     $("timer").textContent = fmtTime(t);
     $("left").textContent = run.left;
     $("left").classList.toggle("final", run.left <= FINAL_STRETCH);
-    $("goo").textContent = Math.floor(run.goo);
-    $("mass").textContent = Math.round(run.cells.reduce((s, c) => s + c.m, 0));
+    $("goo").textContent = fmtNum(run.goo);
+    $("mass").textContent = fmtNum(run.cells.reduce((s, c) => s + c.m, 0));
     if (run.combo > 0) {
-      $("comboTxt").textContent = `${run.combo} · ×${comboMult(run.combo).toFixed(2)}`;
+      $("comboTxt").textContent = `${run.combo}  ×${comboMult(run.combo).toFixed(2)}`;
       $("comboFill").style.width = `${clamp(1 - (now - run.lastEat) / st.comboWindow, 0, 1) * 100}%`;
     } else {
       $("comboTxt").textContent = "—";
@@ -889,9 +896,9 @@
     const dashBtn = $("dashBtn");
     dashBtn.hidden = !run.up.dash.owned;
     if (run.up.dash.owned) {
-      $("dashSub").textContent = `${run.dash.n}/${st.dashCharges}`;
+      $("dashSub").textContent = run.dash.n;
       const full = run.dash.n >= st.dashCharges;
-      dashBtn.querySelector(".cd").style.height = full ? "0%" : `${(1 - run.dash.prog) * 100}%`;
+      $("dashRing").style.setProperty("--p", full ? 1 : run.dash.prog);
       dashBtn.classList.toggle("ready", run.dash.n > 0);
     }
     if (now - lastShopUpdate > 120) { updateShop(); lastShopUpdate = now; }
