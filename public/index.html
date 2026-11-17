@@ -47,6 +47,8 @@
   #hud .row { display: flex; justify-content: space-between; gap: 14px; color: var(--muted); }
   #hud b { color: var(--text); font-weight: 600; }
   #hud .goo b { color: var(--goo); }
+  #left.final { color: var(--gold); animation: throb .6s ease-in-out infinite alternate; }
+  @keyframes throb { to { text-shadow: 0 0 10px var(--gold); } }
   #modeTag { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
   #modeTag.fresh { color: var(--gold); }
   #combo { margin-top: 4px; }
@@ -71,7 +73,7 @@
   .shop-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .shop-head h2 { margin: 0; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
   .goo-pill { color: var(--goo); font-weight: 800; font-size: 20px; }
-  .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 10px; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
   .tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 2px 8px;
     border-radius: 10px; border: 1px solid var(--panel-border); background: var(--raised); }
   .tile:hover { border-color: rgba(88,196,168,0.6); }
@@ -130,7 +132,8 @@
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
   .stack { display: flex; flex-direction: column; gap: 14px; }
   #results { border: 1px solid var(--panel-border); border-radius: 10px; padding: 12px 14px; background: rgba(88,196,168,0.07); }
-  #results .big { font-size: 34px; font-weight: 700; }
+  #results .big { font-size: 40px; font-weight: 800; color: var(--gold); }
+  #resEss { font-size: 20px; }
   #results .line { color: var(--muted); }
   #results .line b { color: var(--text); }
   #results .pb { color: var(--gold); font-weight: 600; }
@@ -197,8 +200,6 @@
 
 <div id="abilities" class="panel" hidden>
   <button class="ability" id="dashBtn" hidden><span class="cd"></span><kbd>Space</kbd><span class="label">Dash</span><span class="sub num" id="dashSub"></span></button>
-  <button class="ability" id="splitBtn" hidden><span class="cd"></span><kbd>E</kbd><span class="label">Split</span><span class="sub num" id="splitSub"></span></button>
-  <button class="ability" id="regroupBtn" hidden><kbd>Q</kbd><span class="label">Regroup</span><span class="sub">merge now</span></button>
   <button class="ability" id="shopToggle"><kbd>U</kbd><span class="label">Upgrades</span><span class="sub num" id="shopSub"></span></button>
 </div>
 
@@ -206,7 +207,7 @@
   <div class="shop-head"><h2>Upgrades</h2><span class="goo-pill num"><span id="shopGoo">0</span> Goo</span></div>
   <div id="tiles" class="tiles"></div>
   <div id="detail" class="detail"></div>
-  <p class="shop-hint"><kbd>1</kbd>–<kbd>5</kbd> pick ability <kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd> buy · resets every run</p>
+  <p class="shop-hint"><kbd>1</kbd>–<kbd>4</kbd> pick ability <kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd> buy · resets every run</p>
 </aside>
 
 <div id="overlay">
@@ -219,7 +220,7 @@
           <div class="line" id="resMode">Run complete</div>
           <div class="big num" id="resTime">0:00.0</div>
           <div class="line" id="resPb"></div>
-          <div class="line">Best combo: <b id="resCombo">0</b></div>
+          <div class="line">Best combo: <b id="resCombo">0</b> · Goo earned: <b id="resGoo">0</b> · Upgrade levels: <b id="resUps">0</b></div>
           <div class="line">Essence earned: <b id="resEss" style="color:var(--essence)">0</b> <span class="small" id="resEssWhy"></span></div>
           <div class="start" style="margin-top:8px">
             <button class="btn" id="submitBtn">Submit to leaderboard</button>
@@ -258,11 +259,11 @@
             <li>Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys, or follow the mouse (or your finger). You have momentum, so plan your turns.</li>
             <li>Eat every blob to stop the clock. <b style="color:var(--gold)">Gold</b> blobs are worth more.</li>
             <li>Eat quickly to build a <b style="color:var(--gold)">combo</b>: up to ×2.6 Goo. It drops if you go too long without eating.</li>
-            <li>Buy upgrades without stopping: <kbd>1</kbd>–<kbd>5</kbd> picks an ability, <kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd> buys.</li>
+            <li>Buy upgrades without stopping: <kbd>1</kbd>–<kbd>4</kbd> picks an ability, <kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd> buys.</li>
             <li><kbd>Space</kbd> dashes. Dashes grab blobs from farther away, and eating a gold blob mid-dash refunds the charge.</li>
-            <li><kbd>E</kbd> splits into pieces, <kbd>Q</kbd> regroups them early. <kbd>M</kbd> toggles sound.</li>
+            <li><kbd>M</kbd> toggles sound.</li>
             <li>Your splits (every ⅙ of the map) are compared with your PB. <kbd>R</kbd> restarts, <kbd>Esc</kbd> opens this menu.</li>
-            <li>Clear the map to earn <b style="color:var(--essence)">Essence</b> for permanent upgrades.</li>
+            <li>The last 20 blobs glow and get arrows. Clear the map to earn <b style="color:var(--essence)">Essence</b> for permanent upgrades.</li>
           </ul>
         </div>
       </div>

@@ -3,14 +3,13 @@
   const params = new URLSearchParams(location.search);
   const DEBUG = params.get("debug") === "1";
   const CFG = {
-    world: DEBUG ? 3000 : 5000,
-    blobCount: DEBUG ? 20 : 1500,
+    world: DEBUG ? 3000 : 6500,
+    blobCount: DEBUG ? 20 : 2500,
     startMass: 20,
-    parMs: DEBUG ? 30000 : 15 * 60 * 1000, // beat par (15 min) for bonus Essence
+    parMs: DEBUG ? 30000 : 18 * 60 * 1000, // beat par (18 min) for bonus Essence
     seed: 1337, // same map every run, so routes can be learned
-    baseSpeed: 90,
+    baseSpeed: 100,
     accel: 9, // how quickly velocity catches up to input (higher = less drift)
-    minSplitMass: 12,
     splitCount: 6, // speedrun splits per run
     comboBase: 1.1, // seconds between bites to keep a combo
     comboCap: 40,
@@ -24,30 +23,24 @@
   const ABILITIES = [
     { id: "speed", icon: "»", name: "Speed", kind: "Passive", desc: "Higher top speed.", unlock: 0,
       subs: [
-        { id: "lvl", name: "Top speed", max: 8, base: 10, step: 15, info: (l) => `+${l * 10}% speed` },
-      ] },
-    { id: "magnet", icon: "◎", name: "Magnet", kind: "Passive", desc: "Pull nearby blobs toward you.", unlock: 150,
-      subs: [
-        { id: "range", name: "Range", max: 6, base: 60, step: 40, info: (l) => `${40 + 30 * l}px reach` },
-        { id: "pull", name: "Pull strength", max: 3, base: 80, step: 60, info: (l) => `${90 + 60 * l}px/s pull` },
+        { id: "lvl", name: "Top speed", max: 15, base: 20, step: 24, info: (l) => `+${l * 6}% speed` },
       ] },
     { id: "gobble", icon: "✦", name: "Gobble", kind: "Passive", desc: "More from every blob, longer combos.", unlock: 0,
       subs: [
-        { id: "goo", name: "Goo per blob", max: 6, base: 15, step: 20, info: (l) => `+${l * 20}% Goo` },
-        { id: "combo", name: "Combo window", max: 3, base: 100, step: 80, info: (l) => `${(CFG.comboBase + 0.3 * l).toFixed(1)}s to keep combo` },
-        { id: "mass", name: "Mass per blob", max: 3, base: 60, step: 50, info: (l) => `+${l * 20}% mass` },
+        { id: "goo", name: "Goo per blob", max: 12, base: 30, step: 30, info: (l) => `+${l * 15}% Goo` },
+        { id: "combo", name: "Combo window", max: 6, base: 160, step: 120, info: (l) => `${(CFG.comboBase + 0.2 * l).toFixed(1)}s to keep combo` },
+        { id: "mass", name: "Mass per blob", max: 6, base: 100, step: 80, info: (l) => `+${l * 15}% mass` },
       ] },
-    { id: "dash", icon: "➤", name: "Dash", kind: "Active · Space", desc: "Burst in your aim direction. Wider pickup while dashing; a gold blob mid-dash refunds the charge.", unlock: 350,
+    { id: "magnet", icon: "◎", name: "Magnet", kind: "Passive", desc: "Pull nearby blobs toward you.", unlock: 150,
       subs: [
-        { id: "cooldown", name: "Cooldown", max: 5, base: 120, step: 80, info: (l) => `${(4 * 0.78 ** l).toFixed(2)}s recharge` },
-        { id: "distance", name: "Distance", max: 5, base: 120, step: 80, info: (l) => `${Math.round(300 * (1 + 0.3 * l))}px dash` },
-        { id: "charges", name: "Charges", max: 2, base: 500, step: 400, info: (l) => `${1 + l} charge${l ? "s" : ""}` },
+        { id: "range", name: "Range", max: 12, base: 100, step: 60, info: (l) => `${40 + 20 * l}px reach` },
+        { id: "pull", name: "Pull strength", max: 6, base: 140, step: 100, info: (l) => `${90 + 40 * l}px/s pull` },
       ] },
-    { id: "split", icon: "✂", name: "Split", kind: "Active · E / Q", desc: "Split into pieces that eat on their own. Q regroups early.", unlock: 900,
+    { id: "dash", icon: "➤", name: "Dash", kind: "Active · Space", desc: "Short burst in your aim direction. Wider pickup while dashing; a gold blob mid-dash refunds the charge.", unlock: 300,
       subs: [
-        { id: "pieces", name: "Pieces", max: 3, base: 900, step: 700, info: (l) => `up to ${2 ** (1 + l)} pieces` },
-        { id: "launch", name: "Launch distance", max: 3, base: 200, step: 120, info: (l) => `${Math.round(200 * (1 + 0.4 * l))}px launch` },
-        { id: "merge", name: "Merge time", max: 3, base: 200, step: 120, info: (l) => `${(7 * (1 + 0.35 * l)).toFixed(1)}s apart` },
+        { id: "cooldown", name: "Cooldown", max: 10, base: 200, step: 100, info: (l) => `${(3.5 * 0.88 ** l).toFixed(2)}s recharge` },
+        { id: "distance", name: "Distance", max: 8, base: 200, step: 120, info: (l) => `${Math.round(180 * (1 + 0.15 * l))}px dash` },
+        { id: "charges", name: "Charges", max: 4, base: 800, step: 600, info: (l) => `${1 + l} charge${l ? "s" : ""}` },
       ] },
   ];
 
@@ -57,7 +50,7 @@
     { id: "startSpeed", name: "Quick feet", max: 5, base: 6, info: (l) => `+${l * 5}% base speed` },
     { id: "startGoo", name: "Starting Goo", max: 6, base: 4, info: (l) => `start with ${l * 25} Goo` },
     { id: "headDash", name: "Head start: Dash", max: 1, base: 10, info: () => "start runs with Dash unlocked" },
-    { id: "headSplit", name: "Head start: Split", max: 1, base: 15, info: () => "start runs with Split unlocked" },
+    { id: "headMagnet", name: "Head start: Magnet", max: 1, base: 8, info: () => "start runs with Magnet unlocked" },
     { id: "radar", name: "Blob radar", max: 1, base: 12, info: () => "arrows point to the nearest blobs" },
   ];
 
@@ -84,7 +77,8 @@
   }
   const css = getComputedStyle(document.documentElement);
   const C = (name) => css.getPropertyValue(name).trim();
-  const COLORS = { bg: C("--bg"), grid: C("--grid"), edge: C("--edge"), accent: C("--accent"), gold: C("--gold") };
+  const COLORS = { bg: C("--bg"), grid: C("--grid"), edge: C("--edge"), accent: C("--accent"), gold: C("--gold"), goo: C("--goo") };
+  const FINAL_STRETCH = DEBUG ? 6 : 20; // last N blobs glow and get arrows
 
   // ================= save =================
   function defaultSave() {
@@ -98,6 +92,7 @@
     return defaultSave();
   }
   let save = loadSave();
+  if (save.perks.headSplit) { save.perks.headMagnet = 1; delete save.perks.headSplit; }
   function persist() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {}
   }
@@ -145,7 +140,6 @@
         }
       },
       dash() { tone(220, { type: "sawtooth", dur: 0.18, vol: 0.05, slide: 2.2 }); },
-      split() { tone(500, { type: "square", dur: 0.08, vol: 0.04, slide: 0.6 }); tone(700, { type: "square", dur: 0.08, vol: 0.03, slide: 0.6, delay: 0.04 }); },
       refund() { tone(880, { type: "triangle", dur: 0.12, vol: 0.08, delay: 0.06 }); },
       buy() { tone(523, { type: "triangle", dur: 0.08, vol: 0.08 }); tone(784, { type: "triangle", dur: 0.12, vol: 0.08, delay: 0.07 }); },
       finish() { [523, 659, 784, 1047].forEach((f, i) => tone(f, { type: "triangle", dur: 0.25, vol: 0.1, delay: i * 0.11 })); },
@@ -211,7 +205,7 @@
       for (const s of a.subs) up[a.id][s.id] = 0;
     }
     if (perm.headDash) up.dash.owned = true;
-    if (perm.headSplit) up.split.owned = true;
+    if (perm.headMagnet) up.magnet.owned = true;
     const c = CFG.world / 2;
     run = {
       state, fresh,
@@ -233,6 +227,8 @@
       pops: [],
       parts: [],
       floats: [],
+      gooEarned: 0,
+      finaleAt: 0,
       submitted: false,
     };
     cam.x = c; cam.y = c;
@@ -242,19 +238,16 @@
   function stats() {
     const u = run.up, p = run.perm;
     return {
-      speedMult: (1 + 0.1 * u.speed.lvl) * (1 + 0.05 * p.startSpeed),
+      speedMult: (1 + 0.06 * u.speed.lvl) * (1 + 0.05 * p.startSpeed),
       accel: CFG.accel,
-      magnetRange: u.magnet.owned ? 40 + 30 * u.magnet.range : 0,
-      magnetPull: 90 + 60 * u.magnet.pull,
-      gooMult: (1 + 0.2 * u.gobble.goo) * (1 + 0.2 * p.gooMult),
-      massMult: 1 + 0.2 * u.gobble.mass,
-      comboWindow: (CFG.comboBase + 0.3 * u.gobble.combo) * 1000,
-      dashCd: 4000 * 0.78 ** u.dash.cooldown,
-      dashDist: 300 * (1 + 0.3 * u.dash.distance),
+      magnetRange: u.magnet.owned ? 40 + 20 * u.magnet.range : 0,
+      magnetPull: 90 + 40 * u.magnet.pull,
+      gooMult: (1 + 0.15 * u.gobble.goo) * (1 + 0.2 * p.gooMult),
+      massMult: 1 + 0.15 * u.gobble.mass,
+      comboWindow: (CFG.comboBase + 0.2 * u.gobble.combo) * 1000,
+      dashCd: 3500 * 0.88 ** u.dash.cooldown,
+      dashDist: 180 * (1 + 0.15 * u.dash.distance),
       dashCharges: 1 + u.dash.charges,
-      maxPieces: 2 ** (1 + u.split.pieces),
-      splitLaunch: 200 * (1 + 0.4 * u.split.launch),
-      mergeMs: 7000 * (1 + 0.35 * u.split.merge),
     };
   }
   const comboMult = (n) => 1 + 0.04 * (Math.min(n, CFG.comboCap) - 1); // x1 → ~x2.6 at 40
@@ -296,19 +289,15 @@
     if (e.repeat) return;
     const k = e.key.toLowerCase();
     if (e.code === "Space" || k === "shift") { e.preventDefault(); doDash(); }
-    else if (k === "e") doSplit();
-    else if (k === "q") doRegroup();
     else if (k === "u") toggleShop();
     else if (k === "m") toggleMute();
-    else if (k >= "1" && k <= "5") selectAbility(Number(k) - 1);
+    else if (k >= "1" && k <= "4") selectAbility(Number(k) - 1);
     else if (BUY_KEYS.includes(k)) buyRow(BUY_KEYS.indexOf(k));
     else if (k === "r" && run && run.state !== "menu") startRun(run.fresh);
     else if (k === "escape" && run && run.state !== "menu") openMenu();
   });
   window.addEventListener("keyup", (e) => keys.delete(e.code));
   $("dashBtn").addEventListener("click", doDash);
-  $("splitBtn").addEventListener("click", doSplit);
-  $("regroupBtn").addEventListener("click", doRegroup);
   $("shopToggle").addEventListener("click", toggleShop);
   function toggleShop() { $("shop").classList.toggle("open"); }
   function toggleMute() {
@@ -349,31 +338,6 @@
     sfx.dash();
     for (const c of run.cells) burst(c.x, c.y, COLORS.accent, 6, 120);
     beginTimer();
-  }
-
-  function doSplit() {
-    if (!isPlaying() || !run.up.split.owned) return;
-    const st = stats();
-    const before = run.cells.length;
-    const snapshot = [...run.cells].sort((a, b) => b.m - a.m);
-    for (const c of snapshot) {
-      if (run.cells.length >= st.maxPieces) break;
-      if (c.m < CFG.minSplitMass * 2) continue;
-      c.m /= 2;
-      const a = aimFor(c);
-      const v = st.splitLaunch * 8;
-      run.cells.push({ x: c.x, y: c.y, m: c.m, vx: c.vx, vy: c.vy, ix: a.x * v, iy: a.y * v });
-    }
-    if (run.cells.length > before) {
-      run.mergeAt = performance.now() + st.mergeMs;
-      sfx.split();
-      beginTimer();
-    }
-  }
-
-  function doRegroup() {
-    if (!isPlaying() || run.cells.length < 2) return;
-    run.mergeAt = performance.now();
   }
 
   function beginTimer() {
@@ -593,7 +557,9 @@
   function finishRun() {
     run.state = "done";
     run.endT = performance.now();
+    run.finaleAt = run.endT;
     sfx.finish();
+    for (const c of run.cells) burst(c.x, c.y, COLORS.gold, 40, 420);
     const t = run.endT - run.startT;
     const key = run.fresh ? "bestFresh" : "bestNormal";
     const splitKey = run.fresh ? "splitsFresh" : "splitsNormal";
@@ -620,14 +586,29 @@
       $("resPb").textContent = `Personal best: ${fmtTime(prev)} (+${((t - prev) / 1000).toFixed(1)}s)`;
     }
     $("resCombo").textContent = run.maxCombo;
-    $("resEss").textContent = `+${ess}`;
+    $("resGoo").textContent = Math.round(run.gooEarned).toLocaleString();
+    let lv = 0, mx = 0;
+    for (const a of ABILITIES) for (const sub of a.subs) { mx += sub.max; if (run.up[a.id].owned) lv += run.up[a.id][sub.id]; }
+    $("resUps").textContent = `${lv}/${mx}`;
+    run.essGained = ess;
+    $("resEss").textContent = "+0";
     const why = ["10 base"];
     if (parBonus) why.push(`${parBonus} under par`);
     if (pbBonus) why.push(`${pbBonus} PB`);
     $("resEssWhy").textContent = `(${why.join(" + ")})`;
     $("submitBtn").disabled = DEBUG;
     $("submitMsg").textContent = DEBUG ? "Debug runs can't be submitted." : "";
-    setTimeout(() => openMenu(true), 600);
+    setTimeout(() => { openMenu(true); countUpEssence(); }, 2600);
+  }
+
+  function countUpEssence() {
+    const target = run.essGained || 0;
+    const t0 = performance.now();
+    const id = setInterval(() => {
+      const k = Math.min(1, (performance.now() - t0) / 900);
+      $("resEss").textContent = `+${Math.round(target * (1 - (1 - k) ** 3))}`;
+      if (k >= 1) { clearInterval(id); sfx.buy(); }
+    }, 30);
   }
 
   $("submitBtn").addEventListener("click", async () => {
@@ -697,8 +678,11 @@
     run.pops.push({ x: b.x, y: b.y, r: b.r, t: 0, gold: b.gold });
     c.pulse = Math.min(1, (c.pulse || 0) + (b.gold ? 0.9 : 0.45));
     burst(b.x, b.y, b.gold ? COLORS.gold : `hsl(${b.hue} 80% 65%)`, b.gold ? 12 : 5, b.gold ? 160 : 90);
-    if (b.gold || run.combo % 10 === 0) run.floats.push({ x: b.x, y: b.y - b.r, t: 0, text: b.gold ? `+${Math.round(gain)}` : `${run.combo}×`, gold: b.gold });
-    sfx.eat(run.combo, b.gold);
+    run.gooEarned += gain;
+    run.floats.push({ x: b.x, y: b.y - b.r, t: 0, text: `+${Math.max(1, Math.round(gain))}`, gold: b.gold, big: b.gold });
+    if (run.combo % 10 === 0) run.floats.push({ x: c.x, y: c.y - radius(c.m) - 12, t: 0, text: `${run.combo}× combo!`, gold: true, big: true });
+    if (run.floats.length > 90) run.floats.splice(0, run.floats.length - 90);
+    sfx.eat(run.combo, b.gold || run.left < FINAL_STRETCH);
     // dash tech: gold blob eaten mid-dash refunds the charge
     if (b.gold && now < run.dashUntil && run.dash.n < st.dashCharges) {
       run.dash.n++;
@@ -714,10 +698,10 @@
       const el = $("splitDelta");
       if (ref != null) {
         const d = (t - ref) / 1000;
-        el.textContent = `Split ${run.splits.length}: ${d <= 0 ? "−" : "+"}${Math.abs(d).toFixed(1)}s`;
+        el.textContent = `Checkpoint ${run.splits.length}: ${d <= 0 ? "−" : "+"}${Math.abs(d).toFixed(1)}s`;
         el.className = "num " + (d <= 0 ? "good" : "bad");
       } else {
-        el.textContent = `Split ${run.splits.length}: ${fmtTime(t)}`;
+        el.textContent = `Checkpoint ${run.splits.length}: ${fmtTime(t)}`;
         el.className = "num";
       }
       run.deltaShowUntil = now + 4000;
@@ -732,6 +716,15 @@
     if (run.up.dash.owned && run.dash.n < st.dashCharges) {
       run.dash.prog += (dt * 1000) / st.dashCd;
       if (run.dash.prog >= 1) { run.dash.n++; run.dash.prog = 0; }
+    }
+    if (run.state === "done" && now - run.finaleAt < 2300) {
+      if (now > (run.nextFirework || 0)) {
+        run.nextFirework = now + 160;
+        const sx = cam.x + (Math.random() - 0.5) * (W / cam.zoom) * 0.8;
+        const sy = cam.y + (Math.random() - 0.5) * (H / cam.zoom) * 0.8;
+        burst(sx, sy, `hsl(${Math.floor(Math.random() * 360)} 90% 65%)`, 22, 260);
+        run.pops.push({ x: sx, y: sy, r: 6, t: 0, gold: true });
+      }
     }
     if (!playing) return;
 
@@ -833,6 +826,7 @@
     const t = run.state === "running" ? now - run.startT : run.state === "done" ? run.endT - run.startT : 0;
     $("timer").textContent = fmtTime(t);
     $("left").textContent = run.left;
+    $("left").classList.toggle("final", run.left <= FINAL_STRETCH);
     $("goo").textContent = Math.floor(run.goo);
     $("mass").textContent = Math.round(run.cells.reduce((s, c) => s + c.m, 0));
     if (run.combo > 0) {
@@ -852,16 +846,6 @@
       dashBtn.querySelector(".cd").style.height = full ? "0%" : `${(1 - run.dash.prog) * 100}%`;
       dashBtn.classList.toggle("ready", run.dash.n > 0);
     }
-    const splitBtn = $("splitBtn");
-    splitBtn.hidden = !run.up.split.owned;
-    $("regroupBtn").hidden = !(run.up.split.owned && run.cells.length > 1 && now < run.mergeAt);
-    if (run.up.split.owned) {
-      const apart = run.cells.length > 1 && now < run.mergeAt;
-      $("splitSub").textContent = apart ? `${run.cells.length}/${st.maxPieces} · ${((run.mergeAt - now) / 1000).toFixed(1)}s` : `${run.cells.length}/${st.maxPieces}`;
-      const canSplit = run.cells.length < st.maxPieces && run.cells.some((c) => c.m >= CFG.minSplitMass * 2);
-      splitBtn.classList.toggle("ready", canSplit);
-      splitBtn.querySelector(".cd").style.height = apart ? `${((run.mergeAt - now) / st.mergeMs) * 100}%` : "0%";
-    }
     if (now - lastShopUpdate > 120) { updateShop(); lastShopUpdate = now; }
   }
 
@@ -876,7 +860,7 @@
     // close-up while small, pulling out quickly as you grow
     const base = clamp(1.7 * Math.pow(18 / radius(tm), 0.55), 0.3, 1.7) * screen;
     const fit = (Math.min(W, H) * 0.42) / Math.max(spread, 1);
-    const target = run.state === "menu" ? 0.6 * screen : Math.min(base, fit);
+    const target = run.state === "menu" ? 0.6 * screen : run.state === "done" ? Math.min(base, fit) * 0.6 : Math.min(base, fit);
     const k = Math.min(1, dt * 8);
     cam.x += (cx - cam.x) * k;
     cam.y += (cy - cam.y) * k;
@@ -904,6 +888,7 @@
     ctx.lineWidth = 4 / z;
     ctx.strokeRect(0, 0, world, world);
 
+    const finalStretch = isPlaying() && run.left <= FINAL_STRETCH;
     for (const b of run.blobs) {
       if (!b.alive) continue;
       if (b.x < vx0 - 20 || b.x > vx1 + 20 || b.y < vy0 - 20 || b.y > vy1 + 20) continue;
@@ -914,6 +899,13 @@
       if (b.gold) {
         ctx.strokeStyle = "rgba(255,255,255,0.6)";
         ctx.lineWidth = 1.5 / z;
+        ctx.stroke();
+      }
+      if (finalStretch) {
+        ctx.strokeStyle = "rgba(245,197,66,0.85)";
+        ctx.lineWidth = 2.5 / z;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r + (7 + 3 * Math.sin(now / 140)) / z, 0, Math.PI * 2);
         ctx.stroke();
       }
     }
@@ -1006,18 +998,51 @@
       const a = 1 - f.t / 0.8;
       if (a <= 0) continue;
       ctx.globalAlpha = a;
-      ctx.font = `700 ${Math.round(15 / z)}px system-ui, sans-serif`;
-      ctx.fillStyle = f.gold ? COLORS.gold : "#ffffff";
+      ctx.font = `800 ${((f.big ? 19 : 13) / z).toFixed(2)}px system-ui, sans-serif`;
+      ctx.lineWidth = 3 / z;
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.strokeText(f.text, f.x, f.y - f.t * 45 / z);
+      ctx.fillStyle = f.gold ? COLORS.gold : COLORS.goo;
       ctx.fillText(f.text, f.x, f.y - f.t * 45 / z);
     }
     ctx.globalAlpha = 1;
     run.floats = run.floats.filter((f) => f.t < 0.8);
 
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    if (run.perm.radar && isPlaying()) drawRadar(vx0, vx1, vy0, vy1);
+    if (isPlaying() && (run.perm.radar || run.left <= FINAL_STRETCH)) drawRadar(vx0, vx1, vy0, vy1, run.left <= FINAL_STRETCH ? 6 : 3);
+    // finale: white flash and banner
+    if (run.state === "done" && run.finaleAt) {
+      const e = now - run.finaleAt;
+      if (e < 450) {
+        ctx.fillStyle = `rgba(255,255,255,${0.55 * (1 - e / 450)})`;
+        ctx.fillRect(0, 0, W, H);
+      }
+      if (e < 2600) {
+        const a = Math.min(1, e / 200) * Math.min(1, (2600 - e) / 400);
+        const scale = 1 + 0.25 * Math.max(0, 1 - e / 300);
+        const big = Math.round((Math.min(W, 900) / 11) * scale);
+        const small = Math.round(Math.min(W, 900) / 26);
+        ctx.globalAlpha = a;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = `900 ${big}px system-ui, sans-serif`;
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = "rgba(0,0,0,0.6)";
+        ctx.strokeText("MAP CLEARED!", W / 2, H * 0.38);
+        ctx.fillStyle = COLORS.gold;
+        ctx.fillText("MAP CLEARED!", W / 2, H * 0.38);
+        ctx.font = `700 ${small}px system-ui, sans-serif`;
+        ctx.lineWidth = 5;
+        const ty = H * 0.38 + Math.min(W, 900) / 12;
+        ctx.strokeText(fmtTime(run.endT - run.startT), W / 2, ty);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(fmtTime(run.endT - run.startT), W / 2, ty);
+        ctx.globalAlpha = 1;
+      }
+    }
   }
 
-  function drawRadar(vx0, vx1, vy0, vy1) {
+  function drawRadar(vx0, vx1, vy0, vy1, count) {
     const near = [];
     for (const b of run.blobs) {
       if (!b.alive) continue;
@@ -1026,7 +1051,7 @@
     }
     near.sort((a, b) => a[0] - b[0]);
     ctx.fillStyle = COLORS.gold;
-    for (const [, b] of near.slice(0, 3)) {
+    for (const [, b] of near.slice(0, count)) {
       const ang = Math.atan2(b.y - cam.y, b.x - cam.x);
       const margin = 34;
       const hx = W / 2 - margin, hy = H / 2 - margin;
@@ -1046,8 +1071,9 @@
   // ================= loop =================
   let last = performance.now();
   function tick(now) {
-    const dt = Math.min(0.05, (now - last) / 1000);
+    let dt = Math.min(0.05, (now - last) / 1000);
     last = now;
+    if (run && run.state === "done" && now - run.finaleAt < 900) dt *= 0.35; // slow-mo on the final bite
     update(dt, now);
     updateCamera(dt);
     draw(now, dt);
