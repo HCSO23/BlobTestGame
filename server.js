@@ -6,7 +6,7 @@ const path = require("path");
 
 const PORT = Number(process.env.PORT) || 3000;
 const SCORES_FILE = path.join(__dirname, "scores.json");
-const MIN_TIME_MS = 20000; // anything faster is not a real run
+const MIN_TIME_MS = 3 * 60 * 1000; // anything faster is not a real run
 const MAX_TIME_MS = 6 * 60 * 60 * 1000;
 const KEEP_PER_BOARD = 100;
 const SHOW_PER_BOARD = 20;

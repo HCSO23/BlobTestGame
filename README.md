@@ -2,7 +2,7 @@
 
 An incremental speedrun game: eat every blob on the map as fast as you can.
 
-- **Goal:** the map has 600 small blobs that don't move. Eat them all to stop the clock. The map is the same every run, so you can learn a route.
+- **Goal:** the 5000×5000 map has 1,500 small blobs that don't move. Eat them all to stop the clock. The map is the same every run, so you can learn a route.
 - **Goo:** eating gives mass and Goo. Spend Goo mid-run on abilities and their sub-upgrades:
   - Speed
   - Magnet

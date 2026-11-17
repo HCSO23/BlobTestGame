@@ -3,12 +3,12 @@
   const params = new URLSearchParams(location.search);
   const DEBUG = params.get("debug") === "1";
   const CFG = {
-    world: 3000,
-    blobCount: DEBUG ? 20 : 600,
+    world: DEBUG ? 3000 : 5000,
+    blobCount: DEBUG ? 20 : 1500,
     startMass: 20,
-    parMs: DEBUG ? 30000 : 240000, // beat par for bonus Essence
+    parMs: DEBUG ? 30000 : 15 * 60 * 1000, // beat par (15 min) for bonus Essence
     seed: 1337, // same map every run, so routes can be learned
-    baseSpeed: 240,
+    baseSpeed: 100,
     accel: 9, // how quickly velocity catches up to input (higher = less drift)
     minSplitMass: 12,
     splitCount: 6, // speedrun splits per run
@@ -16,7 +16,7 @@
     comboCap: 40,
   };
   const SAVE_KEY = DEBUG ? "blobDevourSave_debug" : "blobDevourSave";
-  const COST_MULT = 1.55;
+  const COST_MULT = 1.9;
   const PERK_MULT = 1.6;
   const BUY_KEYS = ["z", "x", "c"];
 
@@ -24,31 +24,31 @@
   const ABILITIES = [
     { id: "speed", icon: "»", name: "Speed", kind: "Passive", desc: "Higher top speed.", unlock: 0,
       subs: [
-        { id: "lvl", name: "Top speed", max: 5, base: 20, info: (l) => `+${l * 7}% speed` },
-        { id: "grip", name: "Grip", max: 3, base: 25, info: (l) => `${l ? "+" + l * 30 + "%" : "base"} turning` },
+        { id: "lvl", name: "Top speed", max: 8, base: 20, info: (l) => `+${l * 10}% speed` },
+        { id: "grip", name: "Grip", max: 3, base: 100, info: (l) => `${l ? "+" + l * 30 + "%" : "base"} turning` },
       ] },
-    { id: "magnet", icon: "◎", name: "Magnet", kind: "Passive", desc: "Pull nearby blobs toward you.", unlock: 40,
+    { id: "magnet", icon: "◎", name: "Magnet", kind: "Passive", desc: "Pull nearby blobs toward you.", unlock: 300,
       subs: [
-        { id: "range", name: "Range", max: 5, base: 18, info: (l) => `${50 + 30 * l}px reach` },
-        { id: "pull", name: "Pull strength", max: 3, base: 25, info: (l) => `${90 + 60 * l}px/s pull` },
+        { id: "range", name: "Range", max: 6, base: 100, info: (l) => `${40 + 30 * l}px reach` },
+        { id: "pull", name: "Pull strength", max: 3, base: 150, info: (l) => `${90 + 60 * l}px/s pull` },
       ] },
     { id: "gobble", icon: "✦", name: "Gobble", kind: "Passive", desc: "More from every blob, longer combos.", unlock: 0,
       subs: [
-        { id: "goo", name: "Goo per blob", max: 5, base: 20, info: (l) => `+${l * 20}% Goo` },
-        { id: "combo", name: "Combo window", max: 3, base: 30, info: (l) => `${(CFG.comboBase + 0.3 * l).toFixed(1)}s to keep combo` },
-        { id: "mass", name: "Mass per blob", max: 3, base: 20, info: (l) => `+${l * 20}% mass` },
+        { id: "goo", name: "Goo per blob", max: 6, base: 40, info: (l) => `+${l * 20}% Goo` },
+        { id: "combo", name: "Combo window", max: 3, base: 120, info: (l) => `${(CFG.comboBase + 0.3 * l).toFixed(1)}s to keep combo` },
+        { id: "mass", name: "Mass per blob", max: 3, base: 80, info: (l) => `+${l * 20}% mass` },
       ] },
-    { id: "dash", icon: "➤", name: "Dash", kind: "Active · Space", desc: "Burst in your aim direction. Wider pickup while dashing; a gold blob mid-dash refunds the charge.", unlock: 35,
+    { id: "dash", icon: "➤", name: "Dash", kind: "Active · Space", desc: "Burst in your aim direction. Wider pickup while dashing; a gold blob mid-dash refunds the charge.", unlock: 400,
       subs: [
-        { id: "cooldown", name: "Cooldown", max: 4, base: 22, info: (l) => `${(3.5 * 0.78 ** l).toFixed(2)}s recharge` },
-        { id: "distance", name: "Distance", max: 4, base: 22, info: (l) => `${Math.round(320 * (1 + 0.25 * l))}px dash` },
-        { id: "charges", name: "Charges", max: 2, base: 60, info: (l) => `${1 + l} charge${l ? "s" : ""}` },
+        { id: "cooldown", name: "Cooldown", max: 5, base: 150, info: (l) => `${(4 * 0.78 ** l).toFixed(2)}s recharge` },
+        { id: "distance", name: "Distance", max: 5, base: 150, info: (l) => `${Math.round(300 * (1 + 0.3 * l))}px dash` },
+        { id: "charges", name: "Charges", max: 2, base: 700, info: (l) => `${1 + l} charge${l ? "s" : ""}` },
       ] },
-    { id: "split", icon: "✂", name: "Split", kind: "Active · E / Q", desc: "Split into pieces that eat on their own. Q regroups early.", unlock: 90,
+    { id: "split", icon: "✂", name: "Split", kind: "Active · E / Q", desc: "Split into pieces that eat on their own. Q regroups early.", unlock: 1000,
       subs: [
-        { id: "pieces", name: "Pieces", max: 2, base: 110, info: (l) => `up to ${2 ** (1 + l)} pieces` },
-        { id: "launch", name: "Launch distance", max: 3, base: 25, info: (l) => `${Math.round(180 * (1 + 0.3 * l))}px launch` },
-        { id: "merge", name: "Merge time", max: 3, base: 25, info: (l) => `${(7 * (1 + 0.35 * l)).toFixed(1)}s apart` },
+        { id: "pieces", name: "Pieces", max: 3, base: 1200, info: (l) => `up to ${2 ** (1 + l)} pieces` },
+        { id: "launch", name: "Launch distance", max: 3, base: 200, info: (l) => `${Math.round(200 * (1 + 0.4 * l))}px launch` },
+        { id: "merge", name: "Merge time", max: 3, base: 200, info: (l) => `${(7 * (1 + 0.35 * l)).toFixed(1)}s apart` },
       ] },
   ];
 
@@ -179,22 +179,22 @@
   function stats() {
     const u = run.up, p = run.perm;
     return {
-      speedMult: (1 + 0.07 * u.speed.lvl) * (1 + 0.05 * p.startSpeed),
+      speedMult: (1 + 0.1 * u.speed.lvl) * (1 + 0.05 * p.startSpeed),
       accel: CFG.accel * (1 + 0.3 * u.speed.grip),
-      magnetRange: u.magnet.owned ? 50 + 30 * u.magnet.range : 0,
+      magnetRange: u.magnet.owned ? 40 + 30 * u.magnet.range : 0,
       magnetPull: 90 + 60 * u.magnet.pull,
       gooMult: (1 + 0.2 * u.gobble.goo) * (1 + 0.2 * p.gooMult),
       massMult: 1 + 0.2 * u.gobble.mass,
       comboWindow: (CFG.comboBase + 0.3 * u.gobble.combo) * 1000,
-      dashCd: 3500 * 0.78 ** u.dash.cooldown,
-      dashDist: 320 * (1 + 0.25 * u.dash.distance),
+      dashCd: 4000 * 0.78 ** u.dash.cooldown,
+      dashDist: 300 * (1 + 0.3 * u.dash.distance),
       dashCharges: 1 + u.dash.charges,
       maxPieces: 2 ** (1 + u.split.pieces),
-      splitLaunch: 180 * (1 + 0.3 * u.split.launch),
+      splitLaunch: 200 * (1 + 0.4 * u.split.launch),
       mergeMs: 7000 * (1 + 0.35 * u.split.merge),
     };
   }
-  const comboMult = (n) => 1 + 0.075 * (Math.min(n, CFG.comboCap) - 1); // x1 → ~x3.9 at 40
+  const comboMult = (n) => 1 + 0.04 * (Math.min(n, CFG.comboCap) - 1); // x1 → ~x2.6 at 40
   const splitEvery = () => Math.max(1, Math.floor(CFG.blobCount / CFG.splitCount));
 
   // ================= input =================
@@ -521,9 +521,9 @@
     const splitKey = run.fresh ? "splitsFresh" : "splitsNormal";
     const prev = save[key];
     const isPb = prev == null || t < prev;
-    const parBonus = Math.max(0, Math.floor((CFG.parMs - t) / 10000));
+    const parBonus = Math.max(0, Math.floor((CFG.parMs - t) / (DEBUG ? 10000 : 30000))); // +1 per 30s under par
     const pbBonus = isPb && prev != null ? 3 : 0;
-    const ess = 5 + parBonus + pbBonus;
+    const ess = 10 + parBonus + pbBonus;
     save.essence += ess;
     save.prestige += 1;
     if (isPb) { save[key] = t; save[splitKey] = run.splits.slice(); }
@@ -543,7 +543,7 @@
     }
     $("resCombo").textContent = run.maxCombo;
     $("resEss").textContent = `+${ess}`;
-    const why = ["5 base"];
+    const why = ["10 base"];
     if (parBonus) why.push(`${parBonus} under par`);
     if (pbBonus) why.push(`${pbBonus} PB`);
     $("resEssWhy").textContent = `(${why.join(" + ")})`;
@@ -668,7 +668,7 @@
 
     for (const c of cells) {
       const r = radius(c.m);
-      const top = CFG.baseSpeed * st.speedMult * Math.pow(18 / r, 0.32);
+      const top = CFG.baseSpeed * st.speedMult * Math.pow(18 / r, 0.22);
       let tx = 0, ty = 0;
       if (steering && kd) { tx = kd.x * top; ty = kd.y * top; }
       else if (steering && pointer.active) {
